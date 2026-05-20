@@ -15,6 +15,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.env.Environment;
@@ -36,6 +37,13 @@ public class UploadService {
             "image/jpeg",
             "image/webp",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+    private static final Map<String, Set<String>> ALLOWED_EXTENSIONS = Map.of(
+            "application/pdf", Set.of("pdf"),
+            "image/png", Set.of("png"),
+            "image/jpeg", Set.of("jpg", "jpeg"),
+            "image/webp", Set.of("webp"),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Set.of("docx")
     );
 
     private final UploadedDocumentRepository repository;
@@ -189,6 +197,11 @@ public class UploadService {
         if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
             throw new IllegalArgumentException("Tipo de arquivo nao permitido");
         }
+        String extension = extensionOf(file.getOriginalFilename());
+        Set<String> allowedExtensions = ALLOWED_EXTENSIONS.get(file.getContentType());
+        if (extension.isBlank() || allowedExtensions == null || !allowedExtensions.contains(extension)) {
+            throw new IllegalArgumentException("Extensao do arquivo nao corresponde ao tipo permitido");
+        }
     }
 
     private String required(String property) {
@@ -201,7 +214,26 @@ public class UploadService {
 
     private String sanitizeFilename(String filename) {
         String value = filename == null || filename.isBlank() ? "arquivo" : filename;
-        return value.replaceAll("[^A-Za-z0-9._-]", "-");
+        String sanitized = value.replaceAll("[^A-Za-z0-9._-]", "-");
+        if (sanitized.length() <= 120) {
+            return sanitized;
+        }
+        String extension = extensionOf(sanitized);
+        String suffix = extension.isBlank() ? "" : "." + extension;
+        int maxBaseLength = Math.max(1, 120 - suffix.length());
+        return sanitized.substring(0, maxBaseLength) + suffix;
+    }
+
+    private String extensionOf(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "";
+        }
+        String value = filename.trim().toLowerCase();
+        int dot = value.lastIndexOf('.');
+        if (dot < 0 || dot == value.length() - 1) {
+            return "";
+        }
+        return value.substring(dot + 1);
     }
 
     private String normalizeEntityType(String entityType) {

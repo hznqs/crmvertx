@@ -57,14 +57,26 @@ public class DashboardService {
         LocalDate previousPeriodEnd = periodStart.minusDays(1);
         LocalDate previousPeriodStart = previousPeriodEnd.minusDays(periodDays - 1);
 
+        // Receitas por período
         BigDecimal monthlyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", periodStart, periodEnd);
         BigDecimal previousMonthlyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", previousPeriodStart, previousPeriodEnd);
         BigDecimal mrr = financeEntries.sumRecurringByTypeAndStatus("receita", "pago");
 
+        // Faturamento diário (hoje) e semanal (últimos 7 dias)
+        BigDecimal dailyRevenue = financeEntries.sumByTypeAndStatusAndDue("receita", "pago", today);
+        BigDecimal weeklyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", today.minusDays(6), today);
+
+        // Performance (conversão e ROI)
         long leads = performanceRecords.sumLeadsBetween(periodStart, periodEnd);
         long sales = performanceRecords.sumSalesBetween(periodStart, periodEnd);
         BigDecimal mediaRevenue = performanceRecords.sumRevenueBetween(periodStart, periodEnd);
         BigDecimal investment = performanceRecords.sumInvestmentBetween(periodStart, periodEnd);
+
+        // Follow-ups pendentes: eventos futuros ainda nao executados.
+        long pendingFollowups = events.countPendingFollowups(today);
+
+        // Total de clientes
+        long totalClients = clients.count();
 
         return new DashboardMetricsResponse(
                 monthlyRevenue,
@@ -78,7 +90,11 @@ public class DashboardService {
                 roi(mediaRevenue, investment),
                 clients.averageTicketByPhase(ClientPhase.FECHADO),
                 mrr,
-                growth(monthlyRevenue, previousMonthlyRevenue)
+                growth(monthlyRevenue, previousMonthlyRevenue),
+                dailyRevenue,
+                weeklyRevenue,
+                pendingFollowups,
+                totalClients
         );
     }
 

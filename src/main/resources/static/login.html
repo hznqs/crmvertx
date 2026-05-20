@@ -54,9 +54,11 @@
                 </div>
 
                 <p id="login-error" class="auth-error" role="alert" hidden></p>
+                <p id="login-attempts" class="auth-attempts" hidden></p>
 
                 <button id="login-submit" type="submit" class="auth-submit">
-                    Entrar no CRM
+                    <span data-submit-label>Entrar no CRM</span>
+                    <span class="auth-submit-spinner" aria-hidden="true"></span>
                 </button>
             </form>
         </section>

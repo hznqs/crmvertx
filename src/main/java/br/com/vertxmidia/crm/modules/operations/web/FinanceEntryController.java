@@ -3,6 +3,7 @@ package br.com.vertxmidia.crm.modules.operations.web;
 import br.com.vertxmidia.crm.modules.operations.application.FinanceEntryService;
 import br.com.vertxmidia.crm.modules.operations.dto.FinanceEntryRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.FinanceEntryResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.FinanceSummaryResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDate;
@@ -50,6 +51,15 @@ public class FinanceEntryController {
     @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
     FinanceEntryResponse findById(@PathVariable UUID id) {
         return service.findById(id);
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    FinanceSummaryResponse summary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return service.summary(from, to);
     }
 
     @PostMapping

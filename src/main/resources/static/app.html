@@ -13,6 +13,13 @@
     <script src="/assets/js/core/auth.js" defer></script>
     <script src="/assets/js/core/api.js" defer></script>
     <script src="/assets/js/core/ui.js" defer></script>
+    <script src="/assets/js/pages/dashboard.js" defer></script>
+    <script src="/assets/js/pages/clients.js" defer></script>
+    <script src="/assets/js/pages/billing.js" defer></script>
+    <script src="/assets/js/pages/documents.js" defer></script>
+    <script src="/assets/js/pages/audit.js" defer></script>
+    <script src="/assets/js/pages/settings.js" defer></script>
+    <script src="/assets/js/pages/profile.js" defer></script>
     <script src="/assets/js/pages/crm.js" defer></script>
 </head>
 <body class="app-body">
@@ -131,7 +138,7 @@
                 <span class="text-sm">Agenda</span>
             </button>
 
-            <button onclick="navigate('billing')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all hover:bg-vx-card group" data-page="billing">
+            <button onclick="navigate('billing')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all hover:bg-vx-card group" data-page="billing" data-roles="ADMIN,GESTOR,FINANCEIRO">
                 <svg class="w-5 h-5 text-vx-muted group-hover:text-vx-purple transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-6c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
@@ -397,6 +404,7 @@
                         <option value="negociacao">Negociacao</option>
                         <option value="fechado">Contrato Fechado</option>
                         <option value="followup">Follow-up</option>
+                        <option value="perdido">Perdido</option>
                     </select>
                 </div>
             </div>
@@ -435,7 +443,7 @@
                 <p class="text-vx-muted mt-1">Gestao visual do pipeline</p>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
                 <!-- Prospecção -->
                 <div class="kanban-column bg-vx-card rounded-2xl border border-vx-border p-4 min-h-[360px] animate-fade-in stagger-1" data-phase="prospeccao">
                     <div class="flex items-center gap-2 mb-4">
@@ -474,6 +482,16 @@
                         <span class="ml-auto bg-vx-border px-2 py-1 rounded-full text-xs" id="count-followup">0</span>
                     </div>
                     <div class="space-y-3" id="kanban-followup"></div>
+                </div>
+
+                <!-- Perdido -->
+                <div class="kanban-column bg-vx-card rounded-2xl border border-vx-border p-4 min-h-[360px] animate-fade-in stagger-5" data-phase="perdido">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <h3 class="font-display font-bold">Perdido</h3>
+                        <span class="ml-auto bg-vx-border px-2 py-1 rounded-full text-xs" id="count-perdido">0</span>
+                    </div>
+                    <div class="space-y-3" id="kanban-perdido"></div>
                 </div>
             </div>
         </div>
@@ -554,9 +572,17 @@
                     <p class="text-vx-muted mt-1">Produção de posts, roteiros, landing pages, campanhas e criativos</p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                    <select id="deliveries-client-filter" onchange="renderDeliveries()" class="w-full sm:w-72 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
+                    <select id="deliveries-client-filter" class="w-full sm:w-64 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
                         <option value="">Todos os clientes</option>
                     </select>
+                    <select id="deliveries-status-filter" class="w-full sm:w-48 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
+                        <option value="">Todos os status</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="producao">Em produção</option>
+                        <option value="revisao">Em revisão</option>
+                        <option value="aprovado">Aprovado</option>
+                    </select>
+                    <input id="deliveries-owner-filter" type="search" placeholder="Responsável..." class="w-full sm:w-48 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
                     <button onclick="openDeliveryModal()" class="btn-primary px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Nova Entrega
@@ -572,6 +598,7 @@
             </div>
 
             <div class="deliveries-scroll"><div class="grid grid-cols-1 xl:grid-cols-4 gap-4" id="deliveries-board"></div></div>
+            <div id="deliveries-pagination" class="pagination-bar"></div>
         </div>
 
         <!-- Team Page -->
@@ -684,10 +711,15 @@
                     <h2 class="font-display text-3xl font-bold">Gestão de Comissão</h2>
                     <p class="text-vx-muted mt-1">SDRs e Closers com vendas fechadas, comissão por venda e metas individuais</p>
                 </div>
-                <button onclick="openCommissionModal()" class="btn-primary px-6 py-3 rounded-xl font-medium flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Nova Venda
-                </button>
+                <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                    <select id="commission-member-filter" class="w-full sm:w-72 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
+                        <option value="">Todos os membros</option>
+                    </select>
+                    <button onclick="openCommissionModal()" class="btn-primary px-6 py-3 rounded-xl font-medium flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Nova Venda
+                    </button>
+                </div>
             </header>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -718,6 +750,7 @@
                 <div class="bg-vx-card rounded-2xl border border-vx-border p-6 glow-card">
                     <h3 class="font-display text-xl font-bold mb-4">Vendas registradas</h3>
                     <div id="commission-sales-list" class="space-y-3"></div>
+                    <div id="commission-sales-pagination" class="pagination-bar mt-4"></div>
                 </div>
             </div>
         </div>
@@ -1066,7 +1099,16 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
+                    <select id="calendar-client-filter" class="w-full sm:w-64 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
+                        <option value="">Todos os clientes</option>
+                    </select>
+                    <select id="calendar-status-filter" class="w-full sm:w-44 bg-vx-darker border border-vx-border rounded-xl px-4 py-3 text-sm input-focus transition-all">
+                        <option value="">Todos os status</option>
+                        <option value="agendada">Agendada</option>
+                        <option value="executada">Executada</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
                     <button onclick="changeMonth(-1)" class="p-3 bg-vx-card border border-vx-border rounded-xl hover:bg-vx-border transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -1223,6 +1265,7 @@
                     </div>
                 </div>
                 <div id="documents-list" class="resource-list"></div>
+                <div id="documents-pagination" class="pagination-bar mt-5"></div>
             </section>
         </div>
 
@@ -1255,6 +1298,7 @@
                     <input id="audit-to-filter" type="date" class="rounded-xl px-4 py-2 text-sm input-focus">
                 </div>
                 <div id="audit-list" class="audit-timeline"></div>
+                <div id="audit-pagination" class="pagination-bar mt-5"></div>
             </section>
         </div>
 
@@ -1272,14 +1316,23 @@
                         <div><label class="block text-sm text-vx-muted mb-2">Nome da empresa</label><input id="settings-company-name" required maxlength="180" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                         <div><label class="block text-sm text-vx-muted mb-2">Email corporativo</label><input id="settings-company-email" type="email" maxlength="180" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                         <div><label class="block text-sm text-vx-muted mb-2">Telefone</label><input id="settings-company-phone" maxlength="40" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Documento</label><input id="settings-company-document" maxlength="40" class="w-full rounded-xl px-4 py-3 text-sm input-focus" placeholder="CNPJ ou identificação fiscal"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Site</label><input id="settings-company-website" maxlength="200" class="w-full rounded-xl px-4 py-3 text-sm input-focus" placeholder="https://"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Endereço</label><input id="settings-company-address" maxlength="280" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                         <div><label class="block text-sm text-vx-muted mb-2">Meta mensal padrão</label><input id="settings-revenue-goal" inputmode="decimal" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                         <div><label class="block text-sm text-vx-muted mb-2">Margem padrão (%)</label><input id="settings-profit-margin" type="number" min="0" max="100" step="0.01" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Moeda padrão</label><input id="settings-currency" maxlength="8" class="w-full rounded-xl px-4 py-3 text-sm input-focus" placeholder="BRL"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Fuso horário</label><input id="settings-timezone" maxlength="80" class="w-full rounded-xl px-4 py-3 text-sm input-focus" placeholder="America/Sao_Paulo"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Imposto padrão (%)</label><input id="settings-tax-rate" type="number" min="0" max="100" step="0.01" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Comissão padrão (%)</label><input id="settings-commission-rate" type="number" min="0" max="100" step="0.01" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                     </div>
                 </section>
 
                 <section class="settings-panel">
                     <h3 class="font-display text-xl font-bold">Preferências do CRM</h3>
                     <textarea id="settings-preferences" rows="8" maxlength="10000" class="w-full rounded-xl px-4 py-3 text-sm input-focus mt-5 resize-none" placeholder="Ex: política de follow-up, SLA interno, padrão de naming e regras comerciais..."></textarea>
+                    <label class="block text-sm text-vx-muted mb-2 mt-5">Regras operacionais</label>
+                    <textarea id="settings-crm-rules" rows="6" maxlength="10000" class="w-full rounded-xl px-4 py-3 text-sm input-focus resize-none" placeholder="Ex: fases obrigatórias, critérios de perda, padrão de passagem comercial para operação..."></textarea>
                     <div class="flex justify-end mt-5">
                         <button type="submit" class="btn-primary px-6 py-3 rounded-xl font-medium">Salvar configurações</button>
                     </div>
@@ -1327,11 +1380,15 @@
 
                 <form id="password-form" class="settings-panel" novalidate>
                     <h3 class="font-display text-xl font-bold">Senha</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
                         <div><label class="block text-sm text-vx-muted mb-2">Senha atual</label><input id="password-current" type="password" autocomplete="current-password" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                         <div><label class="block text-sm text-vx-muted mb-2">Nova senha</label><input id="password-new" type="password" autocomplete="new-password" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
+                        <div><label class="block text-sm text-vx-muted mb-2">Confirmar senha</label><input id="password-confirm" type="password" autocomplete="new-password" class="w-full rounded-xl px-4 py-3 text-sm input-focus"></div>
                     </div>
-                    <p class="text-xs text-vx-muted mt-3">Use pelo menos 8 caracteres, letra maiúscula, minúscula e número.</p>
+                    <div class="mt-3">
+                        <div class="h-2 bg-vx-border rounded-full overflow-hidden"><span id="password-strength-bar" class="block h-full w-0 rounded-full transition-all"></span></div>
+                        <p id="password-strength-text" class="text-xs text-vx-muted mt-2">Use pelo menos 8 caracteres, letra maiúscula, minúscula e número.</p>
+                    </div>
                     <div class="flex flex-col sm:flex-row justify-between gap-3 mt-5">
                         <button type="button" onclick="logout()" class="px-6 py-3 rounded-xl border border-vx-border text-sm text-vx-muted hover:text-white hover:bg-vx-card transition-colors">Sair da conta</button>
                         <button type="submit" class="btn-primary px-6 py-3 rounded-xl font-medium">Trocar senha</button>
@@ -1536,6 +1593,7 @@
                         <option value="negociacao">Negociacao</option>
                         <option value="fechado">Contrato Fechado</option>
                         <option value="followup">Follow-up</option>
+                        <option value="perdido">Perdido</option>
                     </select>
                 </div>
 

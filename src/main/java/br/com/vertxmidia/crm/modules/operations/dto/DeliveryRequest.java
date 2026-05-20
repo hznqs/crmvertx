@@ -2,6 +2,7 @@ package br.com.vertxmidia.crm.modules.operations.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -12,6 +13,8 @@ public record DeliveryRequest(
         @NotBlank @Size(max = 180) String title,
         @NotBlank @Size(max = 160) String owner,
         @NotNull LocalDate deadline,
-        @NotBlank @Size(max = 40) String status
+        @NotBlank
+        @Pattern(regexp = "^(pendente|producao|revisao|aprovado)$", message = "Status de entrega invalido")
+        @Size(max = 40) String status
 ) {
 }

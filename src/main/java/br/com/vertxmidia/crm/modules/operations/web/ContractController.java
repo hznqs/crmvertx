@@ -3,6 +3,7 @@ package br.com.vertxmidia.crm.modules.operations.web;
 import br.com.vertxmidia.crm.modules.operations.application.ContractService;
 import br.com.vertxmidia.crm.modules.operations.dto.ContractRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.ContractResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.ContractSummaryResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -46,6 +47,12 @@ public class ContractController {
     @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
     ContractResponse findById(@PathVariable UUID id) {
         return service.findById(id);
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    ContractSummaryResponse summary() {
+        return service.summary();
     }
 
     @PostMapping

@@ -7,8 +7,6 @@ import java.util.UUID;
 public record UploadedDocumentResponse(
         UUID id,
         String originalFilename,
-        String storageBucket,
-        String storagePath,
         String publicUrl,
         String contentType,
         long sizeBytes,
@@ -21,8 +19,6 @@ public record UploadedDocumentResponse(
         return new UploadedDocumentResponse(
                 document.getId(),
                 document.getOriginalFilename(),
-                document.getStorageBucket(),
-                document.getStoragePath(),
                 document.getPublicUrl(),
                 document.getContentType(),
                 document.getSizeBytes(),

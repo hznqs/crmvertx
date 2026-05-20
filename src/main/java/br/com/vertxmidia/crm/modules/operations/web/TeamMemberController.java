@@ -3,6 +3,7 @@ package br.com.vertxmidia.crm.modules.operations.web;
 import br.com.vertxmidia.crm.modules.operations.application.TeamMemberService;
 import br.com.vertxmidia.crm.modules.operations.dto.TeamMemberRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.TeamMemberResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.TeamSummaryResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -46,6 +47,15 @@ public class TeamMemberController {
     @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
     TeamMemberResponse findById(@PathVariable UUID id) {
         return service.findById(id);
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    TeamSummaryResponse summary(
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String search
+    ) {
+        return service.summary(role, search);
     }
 
     @PostMapping

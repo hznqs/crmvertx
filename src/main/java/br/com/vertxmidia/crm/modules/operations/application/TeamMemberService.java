@@ -4,6 +4,7 @@ import br.com.vertxmidia.crm.modules.audit.application.AuditService;
 import br.com.vertxmidia.crm.modules.operations.domain.TeamMember;
 import br.com.vertxmidia.crm.modules.operations.dto.TeamMemberRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.TeamMemberResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.TeamSummaryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.TeamMemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.UUID;
@@ -35,6 +36,26 @@ public class TeamMemberService {
     @Transactional(readOnly = true)
     public TeamMemberResponse findById(UUID id) {
         return TeamMemberResponse.from(get(id));
+    }
+
+    @Transactional(readOnly = true)
+    public TeamSummaryResponse summary(String role, String search) {
+        String normalizedRole = role == null ? "" : role.trim();
+        String normalizedSearch = search == null ? "" : search.trim();
+        long tasks = repository.sumTasksByFilters(normalizedRole, normalizedSearch);
+        long completed = repository.sumCompletedByFilters(normalizedRole, normalizedSearch);
+        long productivity = tasks > 0 ? Math.round((completed * 100.0) / tasks) : 0;
+        return new TeamSummaryResponse(
+                repository.countByFilters(normalizedRole, normalizedSearch),
+                tasks,
+                completed,
+                productivity,
+                repository.countByRole("marketing"),
+                repository.countByRole("trafego"),
+                repository.countByRole("sdr"),
+                repository.countByRole("closer"),
+                repository.countByRole("dev")
+        );
     }
 
     @Transactional

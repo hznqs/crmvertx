@@ -1215,6 +1215,111 @@ button:active {
     }
 }
 
+/* Enterprise polish layer */
+:root {
+    --shadow-soft: 0 12px 34px rgba(0, 0, 0, 0.24);
+    --shadow-panel: 0 1px 0 rgba(255,255,255,.04), 0 18px 44px rgba(0,0,0,.22);
+}
+
+.app-main {
+    background: linear-gradient(180deg, rgba(255,255,255,.018), transparent 260px), #0a0b0f !important;
+}
+
+.bg-vx-card,
+.bg-vx-darker,
+.modal-backdrop + .relative {
+    background: rgba(18, 20, 26, 0.92) !important;
+}
+
+.glow-card,
+.bg-vx-card,
+.kanban-column,
+.delivery-column {
+    box-shadow: var(--shadow-panel) !important;
+}
+
+.card-hover:hover,
+.kanban-card:hover {
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28) !important;
+}
+
+.page > header {
+    background: rgba(18, 20, 26, 0.72) !important;
+    border: 1px solid rgba(255,255,255,.07);
+    box-shadow: var(--shadow-panel);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #db2777) !important;
+    box-shadow: 0 10px 24px rgba(124, 58, 237, 0.18), inset 0 1px 0 rgba(255,255,255,.16) !important;
+    position: relative;
+}
+
+.btn-primary.is-loading::after,
+button.is-loading::after {
+    content: "";
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    margin-left: 8px;
+    border: 2px solid rgba(255,255,255,.28);
+    border-top-color: #ffffff;
+    border-radius: 999px;
+    vertical-align: -2px;
+    animation: vxSpin .8s linear infinite;
+}
+
+.app-skeleton-panel {
+    display: grid;
+    gap: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255,255,255,.035);
+    padding: 16px;
+}
+
+.empty-state {
+    border: 1px dashed rgba(255,255,255,.14) !important;
+    border-radius: 16px !important;
+    background: rgba(255,255,255,.026) !important;
+    color: var(--text-soft);
+    padding: 28px !important;
+}
+
+.empty-state h4 {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.empty-state p {
+    color: #97a0af;
+}
+
+.mobile-bottom-nav {
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    border-radius: 20px;
+}
+
+.mobile-bottom-nav__item {
+    transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.mobile-bottom-nav__item:active {
+    transform: translateY(1px);
+}
+
+.mobile-bottom-nav__item.is-active {
+    background: rgba(255,255,255,.09);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+@keyframes vxSpin {
+    to { transform: rotate(360deg); }
+}
+
 button[title*="Baixar"],
 button[aria-label*="Baixar"],
 a[title*="Baixar"],

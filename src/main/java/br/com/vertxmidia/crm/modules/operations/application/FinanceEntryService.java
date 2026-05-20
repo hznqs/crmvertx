@@ -1,12 +1,16 @@
 package br.com.vertxmidia.crm.modules.operations.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.domain.ClientPhase;
+import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.domain.FinanceEntry;
 import br.com.vertxmidia.crm.modules.operations.dto.FinanceEntryRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.FinanceEntryResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.FinanceSummaryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.FinanceEntryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.cache.annotation.CacheEvict;
@@ -20,10 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class FinanceEntryService {
 
     private final FinanceEntryRepository repository;
+    private final ClientRepository clientRepository;
     private final AuditService auditService;
 
-    public FinanceEntryService(FinanceEntryRepository repository, AuditService auditService) {
+    public FinanceEntryService(FinanceEntryRepository repository, ClientRepository clientRepository, AuditService auditService) {
         this.repository = repository;
+        this.clientRepository = clientRepository;
         this.auditService = auditService;
     }
 
@@ -40,6 +46,39 @@ public class FinanceEntryService {
     @Transactional(readOnly = true)
     public FinanceEntryResponse findById(UUID id) {
         return FinanceEntryResponse.from(get(id));
+    }
+
+    @Transactional(readOnly = true)
+    public FinanceSummaryResponse summary(LocalDate from, LocalDate to) {
+        BigDecimal activeClientRecurring = clientRepository.sumContractValueByPhase(ClientPhase.FECHADO);
+        BigDecimal recurringEntries = repository.sumRecurringByTypeAndPeriod("receita", from, to);
+        BigDecimal revenueEntries = repository.sumByTypeAndPeriod("receita", from, to);
+        BigDecimal expenses = repository.sumByTypeAndPeriod("despesa", from, to);
+        BigDecimal commissions = repository.sumByTypeAndPeriod("comissao", from, to);
+        BigDecimal taxes = repository.sumByTypeAndPeriod("imposto", from, to);
+        BigDecimal overdue = repository.sumByStatusAndPeriod("vencido", from, to);
+        long autoBilling = repository.countAutoBillingByPeriod(from, to);
+
+        BigDecimal recurringRevenue = activeClientRecurring.add(recurringEntries);
+        BigDecimal grossRevenue = activeClientRecurring.add(revenueEntries);
+        BigDecimal forecast = grossRevenue.add(recurringRevenue);
+        BigDecimal netProfit = grossRevenue.subtract(expenses).subtract(commissions).subtract(taxes);
+        BigDecimal margin = grossRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? netProfit.multiply(BigDecimal.valueOf(100)).divide(grossRevenue, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return new FinanceSummaryResponse(
+                recurringRevenue,
+                forecast,
+                netProfit,
+                margin,
+                overdue,
+                autoBilling,
+                commissions,
+                taxes,
+                grossRevenue,
+                expenses
+        );
     }
 
     @Transactional

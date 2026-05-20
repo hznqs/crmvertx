@@ -1,11 +1,15 @@
 package br.com.vertxmidia.crm.modules.operations.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.domain.ClientPhase;
+import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.domain.Contract;
 import br.com.vertxmidia.crm.modules.operations.dto.ContractRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.ContractResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.ContractSummaryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
@@ -18,10 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ContractService {
 
     private final ContractRepository repository;
+    private final ClientRepository clientRepository;
     private final AuditService auditService;
 
-    public ContractService(ContractRepository repository, AuditService auditService) {
+    public ContractService(ContractRepository repository, ClientRepository clientRepository, AuditService auditService) {
         this.repository = repository;
+        this.clientRepository = clientRepository;
         this.auditService = auditService;
     }
 
@@ -36,6 +42,17 @@ public class ContractService {
     @Transactional(readOnly = true)
     public ContractResponse findById(UUID id) {
         return ContractResponse.from(get(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ContractSummaryResponse summary() {
+        LocalDate today = LocalDate.now();
+        return new ContractSummaryResponse(
+                repository.countByStatus("ativo"),
+                repository.countByStatusAndEndDateBetween("ativo", today, today.plusDays(30)),
+                repository.countByAutoRenewTrue(),
+                clientRepository.sumContractValueByPhase(ClientPhase.FECHADO)
+        );
     }
 
     @Transactional

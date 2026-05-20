@@ -4,8 +4,11 @@ import br.com.vertxmidia.crm.modules.audit.application.AuditService;
 import br.com.vertxmidia.crm.modules.operations.domain.Delivery;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.DeliveryStatusUpdateRequest;
+import br.com.vertxmidia.crm.modules.operations.dto.DeliverySummaryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.DeliveryRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
@@ -39,6 +42,18 @@ public class DeliveryService {
         return DeliveryResponse.from(get(id));
     }
 
+    @Transactional(readOnly = true)
+    public DeliverySummaryResponse summary(UUID clientId, String owner) {
+        String normalizedOwner = owner == null ? "" : owner.trim();
+        return new DeliverySummaryResponse(
+                repository.countByStatusAndFilters("pendente", clientId, normalizedOwner),
+                repository.countByStatusAndFilters("producao", clientId, normalizedOwner),
+                repository.countByStatusAndFilters("revisao", clientId, normalizedOwner),
+                repository.countByStatusAndFilters("aprovado", clientId, normalizedOwner),
+                repository.countLateByFilters(LocalDate.now(), clientId, normalizedOwner)
+        );
+    }
+
     @Transactional
     @CacheEvict(value = "dashboardMetrics", allEntries = true)
     public DeliveryResponse create(DeliveryRequest request) {
@@ -57,6 +72,18 @@ public class DeliveryService {
         apply(request, delivery);
         Delivery saved = repository.save(delivery);
         auditService.log("UPDATE", "Entrega", saved.getId());
+        return DeliveryResponse.from(saved);
+    }
+
+    @Transactional
+    @CacheEvict(value = "dashboardMetrics", allEntries = true)
+    public DeliveryResponse updateStatus(UUID id, DeliveryStatusUpdateRequest request) {
+        Delivery delivery = get(id);
+        String newStatus = request.status().trim();
+        auditService.logChange("Entrega", delivery.getId(), "status", delivery.getStatus(), newStatus);
+        delivery.setStatus(newStatus);
+        Delivery saved = repository.save(delivery);
+        auditService.log("STATUS_UPDATE", "Entrega", saved.getId());
         return DeliveryResponse.from(saved);
     }
 

@@ -1,6 +1,7 @@
 package br.com.vertxmidia.crm.modules.client.web;
 
 import br.com.vertxmidia.crm.modules.client.application.ClientService;
+import br.com.vertxmidia.crm.modules.client.dto.ClientPhaseUpdateRequest;
 import br.com.vertxmidia.crm.modules.client.dto.ClientRequest;
 import br.com.vertxmidia.crm.modules.client.dto.ClientResponse;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -59,6 +61,12 @@ public class ClientController {
     @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL')")
     ClientResponse update(@PathVariable UUID id, @Valid @RequestBody ClientRequest request) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/phase")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL')")
+    ClientResponse updatePhase(@PathVariable UUID id, @Valid @RequestBody ClientPhaseUpdateRequest request) {
+        return service.updatePhase(id, request);
     }
 
     @DeleteMapping("/{id}")

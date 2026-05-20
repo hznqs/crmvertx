@@ -3,15 +3,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('login-form');
     const error = document.getElementById('login-error');
+    const attemptsMessage = document.getElementById('login-attempts');
     const submit = document.getElementById('login-submit');
+    const submitLabel = submit?.querySelector('[data-submit-label]');
     const password = document.getElementById('login-password');
     const togglePassword = document.getElementById('toggle-password');
     let cooldownTimer = null;
+    let failedAttempts = Number(sessionStorage.getItem('vx_login_attempts') || 0);
 
     function setSubmitLoading(isLoading) {
         submit.disabled = isLoading;
         form.classList.toggle('is-submitting', isLoading);
-        submit.textContent = isLoading ? 'Entrando...' : 'Entrar no CRM';
+        if (submitLabel) {
+            submitLabel.textContent = isLoading ? 'Entrando...' : 'Entrar no CRM';
+        }
+    }
+
+    function setAttemptsMessage() {
+        if (!attemptsMessage) return;
+        if (failedAttempts <= 0) {
+            attemptsMessage.hidden = true;
+            attemptsMessage.textContent = '';
+            return;
+        }
+        attemptsMessage.hidden = false;
+        attemptsMessage.textContent = failedAttempts >= 3
+            ? `Tentativa ${failedAttempts}. Por seguranca, novas falhas podem acionar bloqueio temporario.`
+            : `Tentativa ${failedAttempts}. Verifique email e senha antes de tentar novamente.`;
+    }
+
+    function shakeForm() {
+        form.classList.remove('auth-shake');
+        void form.offsetWidth;
+        form.classList.add('auth-shake');
     }
 
     function startLoginCooldown(seconds) {
@@ -20,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         form.classList.add('is-rate-limited');
         submit.disabled = true;
-        submit.textContent = `Tente novamente em ${remaining}s`;
+        if (submitLabel) submitLabel.textContent = `Tente novamente em ${remaining}s`;
 
         cooldownTimer = window.setInterval(() => {
             remaining -= 1;
@@ -28,10 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.clearInterval(cooldownTimer);
                 form.classList.remove('is-rate-limited');
                 submit.disabled = false;
-                submit.textContent = 'Entrar no CRM';
+                if (submitLabel) submitLabel.textContent = 'Entrar no CRM';
                 return;
             }
-            submit.textContent = `Tente novamente em ${remaining}s`;
+            if (submitLabel) submitLabel.textContent = `Tente novamente em ${remaining}s`;
         }, 1000);
     }
 
@@ -54,8 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             window.VXAuth.save(session);
+            sessionStorage.removeItem('vx_login_attempts');
             window.location.replace('/app.html');
         } catch (err) {
+            failedAttempts += 1;
+            sessionStorage.setItem('vx_login_attempts', String(failedAttempts));
+            setAttemptsMessage();
+            shakeForm();
             error.textContent = err.message || 'Nao foi possivel fazer login.';
             error.hidden = false;
             if (err.status === 429) {

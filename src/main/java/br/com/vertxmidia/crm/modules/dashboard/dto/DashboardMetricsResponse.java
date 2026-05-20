@@ -14,6 +14,10 @@ public record DashboardMetricsResponse(
         BigDecimal clientRoi,
         BigDecimal averageTicket,
         BigDecimal mrr,
-        BigDecimal monthlyGrowth
+        BigDecimal monthlyGrowth,
+        BigDecimal dailyRevenue,
+        BigDecimal weeklyRevenue,
+        long pendingFollowups,
+        long totalClients
 ) {
 }

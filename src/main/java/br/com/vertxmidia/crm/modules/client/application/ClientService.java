@@ -3,6 +3,7 @@ package br.com.vertxmidia.crm.modules.client.application;
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
 import br.com.vertxmidia.crm.modules.client.domain.Client;
 import br.com.vertxmidia.crm.modules.client.domain.ClientPhase;
+import br.com.vertxmidia.crm.modules.client.dto.ClientPhaseUpdateRequest;
 import br.com.vertxmidia.crm.modules.client.dto.ClientRequest;
 import br.com.vertxmidia.crm.modules.client.dto.ClientResponse;
 import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
@@ -75,6 +76,18 @@ public class ClientService {
         }
         repository.deleteById(id);
         auditService.log("DELETE", "Cliente", id);
+    }
+
+    @Transactional
+    @CacheEvict(value = "dashboardMetrics", allEntries = true)
+    public ClientResponse updatePhase(UUID id, ClientPhaseUpdateRequest request) {
+        Client client = getClient(id);
+        ClientPhase newPhase = ClientPhase.from(request.phase());
+        auditService.logChange("Cliente", client.getId(), "phase", client.getPhase(), newPhase);
+        client.setPhase(newPhase);
+        Client saved = repository.save(client);
+        auditService.log("PHASE_UPDATE", "Cliente", saved.getId());
+        return ClientResponse.from(saved);
     }
 
     private Client getClient(UUID id) {

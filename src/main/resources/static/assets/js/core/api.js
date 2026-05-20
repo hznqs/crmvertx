@@ -93,16 +93,17 @@ function filenameFromDisposition(value) {
     return ascii?.[1] || 'documento';
 }
 
+function queryString(params = {}) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') searchParams.set(key, value);
+    });
+    const query = searchParams.toString();
+    return query ? `?${query}` : '';
+}
+
 function crud(path) {
     const unwrapList = (data) => Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []);
-    const queryString = (params = {}) => {
-        const searchParams = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== '') searchParams.set(key, value);
-        });
-        const query = searchParams.toString();
-        return query ? `?${query}` : '';
-    };
 
     return {
         list: (params) => request(`${path}${queryString(params)}`).then(unwrapList),
@@ -125,14 +126,12 @@ function crud(path) {
 window.VXApi = {
     health: () => request('/health'),
     dashboard: {
-        metrics: (params = {}) => {
-            const search = new URLSearchParams();
-            Object.entries(params).forEach(([key, value]) => {
-                if (value !== undefined && value !== null && value !== '') search.set(key, value);
-            });
-            const query = search.toString();
-            return request(`/dashboard/metrics${query ? `?${query}` : ''}`);
-        }
+        metrics: (params = {}) => request(`/dashboard/metrics${queryString(params)}`),
+        revenueChart: (params = {}) => request(`/dashboard/revenue-chart${queryString(params)}`),
+        meetingsChart: (params = {}) => request(`/dashboard/meetings-chart${queryString(params)}`)
+    },
+    billing: {
+        summary: () => request('/billing/summary')
     },
     auth: {
         login: (credentials) => request('/auth/login', {
@@ -164,6 +163,13 @@ window.VXApi = {
             body: JSON.stringify(payload)
         })
     },
+    organization: {
+        get: () => request('/organization'),
+        save: (payload) => request('/organization', {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        })
+    },
     uploads: {
         list: (params) => crud('/uploads').list(params),
         page: (params) => crud('/uploads').page(params),
@@ -181,13 +187,45 @@ window.VXApi = {
         remove: (id) => request(`/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         download: (id) => requestBlob(`/uploads/${encodeURIComponent(id)}/download`)
     },
-    clients: crud('/clients'),
-    contracts: crud('/contracts'),
-    deliveries: crud('/deliveries'),
+    clients: {
+        ...crud('/clients'),
+        updatePhase: (id, phase) => request(`/clients/${encodeURIComponent(id)}/phase`, {
+            method: 'PATCH',
+            body: JSON.stringify({ phase })
+        }),
+        dashboard: (id) => request(`/clients/${encodeURIComponent(id)}/dashboard`),
+        saveDashboard: (id, payload) => request(`/clients/${encodeURIComponent(id)}/dashboard`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        })
+    },
+    contracts: {
+        ...crud('/contracts'),
+        summary: () => request('/contracts/summary')
+    },
+    deliveries: {
+        ...crud('/deliveries'),
+        summary: (params = {}) => request(`/deliveries/summary${queryString(params)}`),
+        updateStatus: (id, status) => request(`/deliveries/${encodeURIComponent(id)}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
+        })
+    },
     events: crud('/events'),
-    financeEntries: crud('/finance-entries'),
+    financeEntries: {
+        ...crud('/finance-entries'),
+        summary: (params = {}) => request(`/finance-entries/summary${queryString(params)}`)
+    },
+    commissionSales: {
+        ...crud('/commission-sales'),
+        metrics: (params = {}) => request(`/commission-sales/metrics${queryString(params)}`),
+        ranking: () => request('/commission-sales/ranking')
+    },
     performanceRecords: crud('/performance-records'),
     goals: crud('/goals'),
-    teamMembers: crud('/team-members'),
+    teamMembers: {
+        ...crud('/team-members'),
+        summary: (params = {}) => request(`/team-members/summary${queryString(params)}`)
+    },
     audit: crud('/audit')
 };

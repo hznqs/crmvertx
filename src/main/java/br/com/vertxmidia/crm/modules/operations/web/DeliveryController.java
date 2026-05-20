@@ -3,6 +3,8 @@ package br.com.vertxmidia.crm.modules.operations.web;
 import br.com.vertxmidia.crm.modules.operations.application.DeliveryService;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryResponse;
+import br.com.vertxmidia.crm.modules.operations.dto.DeliveryStatusUpdateRequest;
+import br.com.vertxmidia.crm.modules.operations.dto.DeliverySummaryResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -49,6 +52,15 @@ public class DeliveryController {
         return service.findById(id);
     }
 
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL','COMERCIAL')")
+    DeliverySummaryResponse summary(
+            @RequestParam(required = false) UUID clientId,
+            @RequestParam(required = false) String owner
+    ) {
+        return service.summary(clientId, owner);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
     ResponseEntity<DeliveryResponse> create(@Valid @RequestBody DeliveryRequest request) {
@@ -60,6 +72,12 @@ public class DeliveryController {
     @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
     DeliveryResponse update(@PathVariable UUID id, @Valid @RequestBody DeliveryRequest request) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    DeliveryResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody DeliveryStatusUpdateRequest request) {
+        return service.updateStatus(id, request);
     }
 
     @DeleteMapping("/{id}")

@@ -1,57 +1,46 @@
-const STORAGE_KEYS = {
-            clients: 'vx_clients',
-            goals: 'vx_goals',
-            events: 'vx_events',
-            contracts: 'vx_contracts',
-            deliveries: 'vx_deliveries',
-            clientDashboards: 'vx_client_dashboards',
-            teamMembers: 'vx_team_members',
-            commissionSales: 'vx_commission_sales',
-            clientPerformance: 'vx_client_performance',
-            financeEntries: 'vx_finance_entries',
-            executiveSettings: 'vx_executive_settings',
-            agencyGoals: 'vx_agency_goals',
-            currentGoal: 'vx_current_goal'
-        };
-
-        function readStorage(key, fallback) {
-            return fallback;
-        }
-
-        function writeStorage(key, value) {
-            return value;
-        }
-
-        // Data store
-        let clients = readStorage(STORAGE_KEYS.clients, []);
-        let goals = readStorage(STORAGE_KEYS.goals, []);
-        let events = readStorage(STORAGE_KEYS.events, []);
-        let contracts = readStorage(STORAGE_KEYS.contracts, []);
-        let deliveries = readStorage(STORAGE_KEYS.deliveries, []);
-        let clientDashboards = readStorage(STORAGE_KEYS.clientDashboards, {});
-        let teamMembers = readStorage(STORAGE_KEYS.teamMembers, []);
-        let commissionSales = readStorage(STORAGE_KEYS.commissionSales, []);
-        let clientPerformance = readStorage(STORAGE_KEYS.clientPerformance, []);
-        let financeEntries = readStorage(STORAGE_KEYS.financeEntries, []);
-        let executiveSettings = readStorage(STORAGE_KEYS.executiveSettings, { profitMargin: 45 });
-        let agencyGoals = readStorage(STORAGE_KEYS.agencyGoals, {
+        // Data store hydrated from the Java API. Browser storage is reserved for auth and UI preferences.
+        let clients = [];
+        let goals = [];
+        let events = [];
+        let contracts = [];
+        let deliveries = [];
+        let clientDashboards = {};
+        let teamMembers = [];
+        let commissionSales = [];
+        let clientPerformance = [];
+        let financeEntries = [];
+        let executiveSettings = { profitMargin: 45 };
+        let agencyGoals = {
             revenue: 50000,
             newClients: 10,
             averageTicket: 3000,
             retention: 90,
             proposals: 25,
             meetings: 15
-        });
-        let currentGoal = readStorage(STORAGE_KEYS.currentGoal, { target: 50000, date: new Date().toISOString() });
+        };
+        let currentGoal = { target: 50000, date: new Date().toISOString() };
         let currentMonth = new Date();
         let backendAvailable = false;
         let dashboardMetrics = null;
+        let dashboardRevenueChart = [];
+        let dashboardMeetingsChart = [];
+        let billingSummary = null;
+        let financeSummary = null;
+        let contractSummary = null;
+        let deliverySummary = null;
+        let teamSummary = null;
         let crmSettings = null;
+        let crmOrganization = null;
         let uploadedDocuments = [];
         let auditLogs = [];
+        let commissionSalesMetrics = null;
+        let commissionRanking = null;
         let clientsPage = { number: 0, size: 25, totalPages: 1, totalElements: 0 };
         let contractsPage = { number: 0, size: 25, totalPages: 1, totalElements: 0 };
+        let deliveriesPage = { number: 0, size: 40, totalPages: 1, totalElements: 0 };
+        let eventsPage = { number: 0, size: 200, totalPages: 1, totalElements: 0 };
         let financePage = { number: 0, size: 12, totalPages: 1, totalElements: 0 };
+        let commissionSalesPage = { number: 0, size: 12, totalPages: 1, totalElements: 0 };
         let teamPage = { number: 0, size: 10, totalPages: 1, totalElements: 0 };
         let goalsPage = { number: 0, size: 10, totalPages: 1, totalElements: 0 };
 
@@ -104,6 +93,27 @@ const STORAGE_KEYS = {
             }
         }
 
+        function renderTableSkeleton(tbodyId, columns, rows = 5) {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            tbody.innerHTML = Array.from({ length: rows }, () => `
+                <tr class="border-b border-vx-border">
+                    ${Array.from({ length: columns }, () => '<td class="px-6 py-4"><span class="app-skeleton-line block w-full"></span></td>').join('')}
+                </tr>
+            `).join('');
+        }
+
+        function renderPanelSkeleton(containerId, rows = 4) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = Array.from({ length: rows }, () => `
+                <div class="app-skeleton-panel">
+                    <span class="app-skeleton-line w-1/2"></span>
+                    <span class="app-skeleton-line w-3/4"></span>
+                </div>
+            `).join('');
+        }
+
         async function loadClientsPage(pageNumber = 0) {
             if (!window.VXApi?.clients?.page || !backendAvailable) {
                 renderClientsTable();
@@ -111,6 +121,7 @@ const STORAGE_KEYS = {
             }
 
             try {
+                renderTableSkeleton('clients-table', 8);
                 const page = await window.VXApi.clients.page({
                     page: Math.max(pageNumber, 0),
                     size: clientsPage.size,
@@ -137,11 +148,13 @@ const STORAGE_KEYS = {
             }
 
             try {
+                renderTableSkeleton('contracts-table', 6);
                 const page = await window.VXApi.contracts.page({
                     page: Math.max(pageNumber, 0),
                     size: contractsPage.size,
                     status: document.getElementById('contracts-status-filter')?.value || ''
                 });
+                contractSummary = await window.VXApi.contracts.summary?.().catch(() => null);
                 contracts = Array.isArray(page?.content) ? page.content : [];
                 contractsPage = {
                     number: page?.number || 0,
@@ -162,6 +175,7 @@ const STORAGE_KEYS = {
             }
 
             try {
+                renderPanelSkeleton('finance-list');
                 const page = await window.VXApi.financeEntries.page({
                     page: Math.max(pageNumber, 0),
                     size: financePage.size,
@@ -170,6 +184,10 @@ const STORAGE_KEYS = {
                     from: document.getElementById('finance-from-filter')?.value || '',
                     to: document.getElementById('finance-to-filter')?.value || ''
                 });
+                financeSummary = await window.VXApi.financeEntries.summary?.({
+                    from: document.getElementById('finance-from-filter')?.value || '',
+                    to: document.getElementById('finance-to-filter')?.value || ''
+                }).catch(() => null);
                 financeEntries = Array.isArray(page?.content) ? page.content.map(normalizeFinanceEntry) : [];
                 financePage = {
                     number: page?.number || 0,
@@ -183,8 +201,125 @@ const STORAGE_KEYS = {
             }
         }
 
+        async function loadDeliveriesPage(pageNumber = 0) {
+            if (!window.VXApi?.deliveries?.page || !backendAvailable) {
+                renderDeliveries();
+                return;
+            }
+
+            try {
+                renderPanelSkeleton('deliveries-board', 4);
+                const page = await window.VXApi.deliveries.page({
+                    page: Math.max(pageNumber, 0),
+                    size: deliveriesPage.size,
+                    clientId: document.getElementById('deliveries-client-filter')?.value || '',
+                    status: document.getElementById('deliveries-status-filter')?.value || '',
+                    owner: document.getElementById('deliveries-owner-filter')?.value || ''
+                });
+                deliverySummary = await window.VXApi.deliveries.summary?.({
+                    clientId: document.getElementById('deliveries-client-filter')?.value || '',
+                    owner: document.getElementById('deliveries-owner-filter')?.value || ''
+                }).catch(() => null);
+                deliveries = Array.isArray(page?.content) ? page.content : [];
+                deliveriesPage = {
+                    number: page?.number || 0,
+                    size: page?.size || deliveriesPage.size,
+                    totalPages: page?.totalPages || 1,
+                    totalElements: page?.totalElements || deliveries.length
+                };
+                renderDeliveries();
+            } catch (error) {
+                showToast(error.message || 'Nao foi possivel carregar entregas', 'error');
+            }
+        }
+
+        async function loadCalendarEvents() {
+            if (!window.VXApi?.events?.page || !backendAvailable) {
+                renderCalendar();
+                return;
+            }
+
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const from = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+            const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+
+            try {
+                populateCalendarClientFilter();
+                const page = await window.VXApi.events.page({
+                    page: 0,
+                    size: eventsPage.size,
+                    from,
+                    to,
+                    clientId: document.getElementById('calendar-client-filter')?.value || '',
+                    status: document.getElementById('calendar-status-filter')?.value || ''
+                });
+                events = Array.isArray(page?.content) ? page.content : [];
+                eventsPage = {
+                    number: page?.number || 0,
+                    size: page?.size || eventsPage.size,
+                    totalPages: page?.totalPages || 1,
+                    totalElements: page?.totalElements || events.length
+                };
+                renderCalendar();
+            } catch (error) {
+                showToast(error.message || 'Nao foi possivel carregar agenda', 'error');
+            }
+        }
+
+        async function loadCommissionSalesPage(pageNumber = 0) {
+            if (!window.VXApi?.commissionSales?.page || !backendAvailable) {
+                renderCommissions();
+                return;
+            }
+
+            try {
+                populateCommissionMemberFilter();
+                const memberId = document.getElementById('commission-member-filter')?.value || '';
+                renderPanelSkeleton('commission-sales-list');
+                const [page, metrics, ranking] = await Promise.all([
+                    window.VXApi.commissionSales.page({
+                        page: Math.max(pageNumber, 0),
+                        size: commissionSalesPage.size,
+                        memberId
+                    }),
+                    window.VXApi.commissionSales.metrics?.({ memberId }).catch(() => null),
+                    window.VXApi.commissionSales.ranking?.().catch(() => null)
+                ]);
+                commissionSales = Array.isArray(page?.content) ? page.content : [];
+                commissionSalesMetrics = metrics;
+                commissionRanking = ranking || commissionRanking;
+                commissionSalesPage = {
+                    number: page?.number || 0,
+                    size: page?.size || commissionSalesPage.size,
+                    totalPages: page?.totalPages || 1,
+                    totalElements: page?.totalElements || commissionSales.length
+                };
+                renderCommissions();
+            } catch (error) {
+                showToast(error.message || 'Nao foi possivel carregar comissoes', 'error');
+            }
+        }
+
+        async function loadCommissionRanking() {
+            if (!window.VXApi?.commissionSales?.ranking || !backendAvailable) {
+                renderRanking();
+                return;
+            }
+
+            try {
+                commissionRanking = await window.VXApi.commissionSales.ranking();
+                renderRanking();
+            } catch (error) {
+                showToast(error.message || 'Nao foi possivel carregar ranking', 'error');
+                renderRanking();
+            }
+        }
+
         window.loadContractsPage = loadContractsPage;
+        window.loadDeliveriesPage = loadDeliveriesPage;
         window.loadFinancePage = loadFinancePage;
+        window.loadCommissionSalesPage = loadCommissionSalesPage;
 
         async function loadTeamPage(pageNumber = 0) {
             if (!window.VXApi?.teamMembers?.page || !backendAvailable) {
@@ -199,6 +334,10 @@ const STORAGE_KEYS = {
                     role: document.getElementById('team-role-filter')?.value || '',
                     search: document.getElementById('team-search')?.value || ''
                 });
+                teamSummary = await window.VXApi.teamMembers.summary?.({
+                    role: document.getElementById('team-role-filter')?.value || '',
+                    search: document.getElementById('team-search')?.value || ''
+                }).catch(() => null);
                 teamMembers = Array.isArray(page?.content) ? page.content.map(normalizeTeamMember) : [];
                 teamPage = {
                     number: page?.number || 0,
@@ -291,7 +430,7 @@ const STORAGE_KEYS = {
             };
         }
 
-        async function hydrateResource(apiName, storageKey, normalizer = (item) => item) {
+        async function hydrateResource(apiName, normalizer = (item) => item) {
             if (!window.VXApi?.[apiName]) return null;
 
             try {
@@ -306,13 +445,14 @@ const STORAGE_KEYS = {
         }
 
         async function hydrateOperationsFromApi() {
-            contracts = await hydrateResource('contracts', STORAGE_KEYS.contracts) || contracts;
-            deliveries = await hydrateResource('deliveries', STORAGE_KEYS.deliveries) || deliveries;
-            events = await hydrateResource('events', STORAGE_KEYS.events) || events;
-            financeEntries = await hydrateResource('financeEntries', STORAGE_KEYS.financeEntries, normalizeFinanceEntry) || financeEntries;
-            clientPerformance = await hydrateResource('performanceRecords', STORAGE_KEYS.clientPerformance) || clientPerformance;
-            goals = await hydrateResource('goals', STORAGE_KEYS.goals) || goals;
-            teamMembers = await hydrateResource('teamMembers', STORAGE_KEYS.teamMembers, normalizeTeamMember) || teamMembers;
+            contracts = await hydrateResource('contracts') || contracts;
+            deliveries = await hydrateResource('deliveries') || deliveries;
+            events = await hydrateResource('events') || events;
+            financeEntries = await hydrateResource('financeEntries', normalizeFinanceEntry) || financeEntries;
+            commissionSales = await hydrateResource('commissionSales') || commissionSales;
+            clientPerformance = await hydrateResource('performanceRecords') || clientPerformance;
+            goals = await hydrateResource('goals') || goals;
+            teamMembers = await hydrateResource('teamMembers', normalizeTeamMember) || teamMembers;
             if (goals.length) currentGoal = goals[0];
         }
 
@@ -320,12 +460,28 @@ const STORAGE_KEYS = {
             if (!window.VXApi?.dashboard?.metrics) return;
 
             try {
-                dashboardMetrics = await window.VXApi.dashboard.metrics({
-                    from: document.getElementById('dashboard-from-filter')?.value || '',
-                    to: document.getElementById('dashboard-to-filter')?.value || ''
-                });
+                if (window.VXDashboardPage?.loadDashboardData) {
+                    const dashboardData = await window.VXDashboardPage.loadDashboardData();
+                    dashboardMetrics = dashboardData.metrics;
+                    dashboardRevenueChart = dashboardData.revenueChart;
+                    dashboardMeetingsChart = dashboardData.meetingsChart;
+                    return;
+                }
+
+                dashboardMetrics = await window.VXApi.dashboard.metrics();
             } catch (error) {
                 console.warn('Metricas agregadas indisponiveis. Usando calculo em memoria da sessao.', error);
+            }
+        }
+
+        async function refreshBillingSummary() {
+            if (!window.VXApi?.billing?.summary || !window.VXAuth?.hasRole?.('ADMIN', 'GESTOR', 'FINANCEIRO')) return;
+
+            try {
+                billingSummary = await window.VXBillingPage?.refresh?.();
+            } catch (error) {
+                console.warn('Resumo de cobrancas indisponivel.', error);
+                showToast(error.message || 'Nao foi possivel carregar cobrancas', 'error');
             }
         }
 
@@ -353,8 +509,60 @@ const STORAGE_KEYS = {
 
             try {
                 crmSettings = await window.VXApi.settings.get();
+                applySettingsToAgencyGoals(crmSettings);
             } catch (error) {
                 console.warn('Configuracoes indisponiveis para este usuario.', error);
+            }
+        }
+
+        function applySettingsToAgencyGoals(settings) {
+            if (!settings) return;
+
+            agencyGoals = {
+                revenue: Number(settings.agencyRevenueGoal ?? agencyGoals.revenue ?? 0),
+                newClients: Number(settings.agencyNewClientsGoal ?? agencyGoals.newClients ?? 0),
+                averageTicket: Number(settings.agencyAverageTicketGoal ?? agencyGoals.averageTicket ?? 0),
+                retention: Number(settings.agencyRetentionGoal ?? agencyGoals.retention ?? 0),
+                proposals: Number(settings.agencyProposalsGoal ?? agencyGoals.proposals ?? 0),
+                meetings: Number(settings.agencyMeetingsGoal ?? agencyGoals.meetings ?? 0)
+            };
+            executiveSettings.profitMargin = Number(settings.defaultProfitMargin ?? executiveSettings.profitMargin ?? 45);
+        }
+
+        function buildSettingsPayload(overrides = {}) {
+            const settings = { ...(crmSettings || {}), ...overrides };
+            const organization = crmOrganization || {};
+            return {
+                companyName: settings.companyName || organization.name || 'VertX Midia',
+                companyEmail: settings.companyEmail || organization.email || '',
+                companyPhone: settings.companyPhone || organization.phone || '',
+                companyDocument: settings.companyDocument || organization.document || '',
+                companyWebsite: settings.companyWebsite || organization.website || '',
+                companyAddress: settings.companyAddress || organization.address || '',
+                defaultRevenueGoal: Number(settings.defaultRevenueGoal || 0),
+                defaultProfitMargin: Number(settings.defaultProfitMargin || 0),
+                defaultCurrency: String(settings.defaultCurrency || 'BRL').trim().toUpperCase(),
+                defaultTimezone: settings.defaultTimezone || 'America/Sao_Paulo',
+                defaultTaxRate: Number(settings.defaultTaxRate || 0),
+                defaultCommissionRate: Number(settings.defaultCommissionRate || 0),
+                agencyRevenueGoal: Number(settings.agencyRevenueGoal || 0),
+                agencyNewClientsGoal: Number(settings.agencyNewClientsGoal || 0),
+                agencyAverageTicketGoal: Number(settings.agencyAverageTicketGoal || 0),
+                agencyRetentionGoal: Number(settings.agencyRetentionGoal || 0),
+                agencyProposalsGoal: Number(settings.agencyProposalsGoal || 0),
+                agencyMeetingsGoal: Number(settings.agencyMeetingsGoal || 0),
+                preferences: settings.preferences || '',
+                crmRules: settings.crmRules || ''
+            };
+        }
+
+        async function hydrateOrganizationFromApi() {
+            if (!window.VXApi?.organization?.get || !window.VXAuth?.hasRole?.('ADMIN', 'GESTOR')) return;
+
+            try {
+                crmOrganization = await window.VXApi.organization.get();
+            } catch (error) {
+                console.warn('Organizacao indisponivel para este usuario.', error);
             }
         }
 
@@ -431,6 +639,7 @@ const STORAGE_KEYS = {
             await hydrateOperationsFromApi();
             await hydrateDashboardMetricsFromApi();
             await hydrateSettingsFromApi();
+            await hydrateOrganizationFromApi();
             await hydrateUploadsFromApi();
             await hydrateAuditFromApi();
             updateAllMetrics();
@@ -517,21 +726,27 @@ const STORAGE_KEYS = {
 
             if (page === 'dashboard') setTimeout(renderDashboardCharts, 60);
             if (page === 'kanban') renderKanban();
-            if (page === 'calendar') renderCalendar();
-            if (page === 'billing') renderBilling();
+            if (page === 'calendar') loadCalendarEvents();
+            if (page === 'billing') refreshBillingSummary();
             if (page === 'contracts') loadContractsPage(contractsPage.number || 0);
-            if (page === 'deliveries') renderDeliveries();
+            if (page === 'deliveries') loadDeliveriesPage(deliveriesPage.number || 0);
             if (page === 'performance') renderClientPerformance();
             if (page === 'financeiro-real') loadFinancePage(financePage.number || 0);
             if (page === 'team') loadTeamPage(teamPage.number || 0);
-            if (page === 'commissions') renderCommissions();
-            if (page === 'ranking') renderRanking();
+            if (page === 'commissions') loadCommissionSalesPage(commissionSalesPage.number || 0);
+            if (page === 'ranking') loadCommissionRanking();
             if (page === 'executive') renderExecutiveDashboard();
             if (page === 'goals') loadGoalsPage(goalsPage.number || 0);
             if (page === 'settings') renderSettings();
             if (page === 'profile') renderProfile();
-            if (page === 'documents') renderDocuments();
-            if (page === 'audit') renderAudit();
+            if (page === 'documents') {
+                if (window.VXDocumentsPage?.refresh) window.VXDocumentsPage.refresh();
+                else renderDocuments();
+            }
+            if (page === 'audit') {
+                if (window.VXAuditPage?.refresh) window.VXAuditPage.refresh();
+                else renderAudit();
+            }
 
             if (window.innerWidth < 1024) {
                 document.getElementById('sidebar')?.classList.add('-translate-x-full');
@@ -794,33 +1009,59 @@ const STORAGE_KEYS = {
                     return;
                 }
 
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = now.getMonth();
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+                let labels = [];
+                let dailyRevenue = [];
+                let dailyMeetings = [];
+                let dailySales = [];
+                const hasApiCharts = dashboardRevenueChart.length > 0 || dashboardMeetingsChart.length > 0;
 
-                const labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
-                const dailyRevenue = Array(daysInMonth).fill(0);
-                const dailyMeetings = Array(daysInMonth).fill(0);
-                const dailySales = Array(daysInMonth).fill(0);
+                if (hasApiCharts) {
+                    const revenueByDate = new Map(dashboardRevenueChart.map(point => [point.date, Number(point.revenue || 0)]));
+                    const meetingsByDate = new Map(dashboardMeetingsChart.map(point => [point.date, Number(point.meetings || 0)]));
+                    const closingsByDate = new Map(dashboardMeetingsChart.map(point => [point.date, Number(point.closings || 0)]));
+                    const dates = [...new Set([
+                        ...dashboardRevenueChart.map(point => point.date),
+                        ...dashboardMeetingsChart.map(point => point.date)
+                    ])].filter(Boolean).sort();
 
-                events.forEach(event => {
-                    if (!event.date || !event.date.startsWith(monthPrefix)) return;
-                    const day = parseInt(event.date.split('-')[2], 10) - 1;
-                    if (day < 0 || day >= daysInMonth) return;
+                    labels = dates.map(date => {
+                        const [year, month, day] = date.split('-');
+                        return `${day}/${month}`;
+                    });
+                    dailyRevenue = dates.map(date => revenueByDate.get(date) || 0);
+                    dailyMeetings = dates.map(date => meetingsByDate.get(date) || 0);
+                    dailySales = dates.map(date => closingsByDate.get(date) || 0);
+                } else {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = now.getMonth();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
 
-                    if ((event.status || 'agendada') === 'executada') {
-                        dailyMeetings[day] += 1;
-                    }
+                    labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+                    dailyRevenue = Array(daysInMonth).fill(0);
+                    dailyMeetings = Array(daysInMonth).fill(0);
+                    dailySales = Array(daysInMonth).fill(0);
 
-                    if (typeof isClosedSale === 'function' ? isClosedSale(event) : ((event.status || 'agendada') === 'executada' && (event.sale === true || event.sale === 'sim'))) {
-                        dailySales[day] += 1;
-                        dailyRevenue[day] += parseFloat(event.revenue || 0) || 0;
-                    }
-                });
+                    events.forEach(event => {
+                        if (!event.date || !event.date.startsWith(monthPrefix)) return;
+                        const day = parseInt(event.date.split('-')[2], 10) - 1;
+                        if (day < 0 || day >= daysInMonth) return;
 
-                const monthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                        if ((event.status || 'agendada') === 'executada') {
+                            dailyMeetings[day] += 1;
+                        }
+
+                        if (typeof isClosedSale === 'function' ? isClosedSale(event) : ((event.status || 'agendada') === 'executada' && (event.sale === true || event.sale === 'sim'))) {
+                            dailySales[day] += 1;
+                            dailyRevenue[day] += parseFloat(event.revenue || 0) || 0;
+                        }
+                    });
+                }
+
+                const selectedFrom = document.getElementById('dashboard-from-filter')?.value;
+                const monthSource = selectedFrom ? new Date(`${selectedFrom}T00:00:00`) : new Date();
+                const monthLabel = monthSource.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                 const monthEl = document.getElementById('chart-revenue-month-label');
                 if (monthEl) monthEl.textContent = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
 
@@ -832,19 +1073,30 @@ const STORAGE_KEYS = {
         // Update all metrics
         function updateAllMetrics() {
             const activeClients = clients.filter(c => c.phase === 'fechado');
-            const followups = clients.filter(c => c.phase === 'followup');
             const monthlyRevenue = dashboardMetrics
                 ? Number(dashboardMetrics.monthlyRevenue || 0)
                 : activeClients.reduce((sum, c) => sum + (parseFloat(c.value) * parseInt(c.months)), 0);
             
             // Dashboard stats
-            document.getElementById('total-clients').textContent = clients.length;
+            const totalCli = dashboardMetrics?.totalClients ?? clients.length;
+            document.getElementById('total-clients').textContent = totalCli;
             document.getElementById('active-clients').textContent = dashboardMetrics?.activeClients ?? activeClients.length;
-            document.getElementById('pending-followups').textContent = followups.length;
+
+            // Follow-ups: prioridade total para o agregado calculado no backend.
+            const pendingFollowupsCount = dashboardMetrics?.pendingFollowups != null
+                ? dashboardMetrics.pendingFollowups
+                : clients.filter(c => c.phase === 'followup').length;
+            document.getElementById('pending-followups').textContent = pendingFollowupsCount;
             
-            // Revenue
-            document.getElementById('daily-revenue').textContent = formatCurrency(monthlyRevenue / 30);
-            document.getElementById('weekly-revenue').textContent = formatCurrency(monthlyRevenue / 4);
+            // Revenue: usa dados diário/semanal reais do backend quando disponíveis
+            const dailyRev = dashboardMetrics?.dailyRevenue != null
+                ? Number(dashboardMetrics.dailyRevenue)
+                : monthlyRevenue / 30;
+            const weeklyRev = dashboardMetrics?.weeklyRevenue != null
+                ? Number(dashboardMetrics.weeklyRevenue)
+                : monthlyRevenue / 4;
+            document.getElementById('daily-revenue').textContent = formatCurrency(dailyRev);
+            document.getElementById('weekly-revenue').textContent = formatCurrency(weeklyRev);
             document.getElementById('monthly-revenue').textContent = formatCurrency(monthlyRevenue);
             
             // Goal progress
@@ -1002,7 +1254,7 @@ const STORAGE_KEYS = {
         };
 
         function renderKanban() {
-            const phases = ['prospeccao', 'negociacao', 'fechado', 'followup'];
+            const phases = ['prospeccao', 'negociacao', 'fechado', 'followup', 'perdido'];
             
             phases.forEach(phase => {
                 const container = document.getElementById(`kanban-${phase}`);
@@ -1108,6 +1360,18 @@ const STORAGE_KEYS = {
             renderUpcomingEvents();
         }
 
+        function populateCalendarClientFilter() {
+            const select = document.getElementById('calendar-client-filter');
+            if (!select) return;
+
+            const currentValue = select.value || '';
+            select.innerHTML = '<option value="">Todos os clientes</option>' +
+                clients.map(client => `<option value="${safeText(client.id)}">${safeText(client.name)}</option>`).join('');
+            if ([...select.options].some(option => option.value === currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
         function formatCompactMoney(value) {
             const n = parseFloat(value || 0);
             if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace('.', ',')}M`;
@@ -1157,32 +1421,6 @@ const STORAGE_KEYS = {
                     </div>
                 `;
             }).join('');
-        }
-
-        function renderBilling() {
-            const activeClients = clients.filter(c => c.phase === 'fechado');
-            const totalRevenue = activeClients.reduce((sum, c) => sum + (parseFloat(c.value) * parseInt(c.months)), 0);
-            const avgTicket = activeClients.length > 0 ? totalRevenue / activeClients.length : 0;
-            
-            document.getElementById('billing-total').textContent = formatCurrency(totalRevenue);
-            document.getElementById('billing-average').textContent = formatCurrency(avgTicket);
-            document.getElementById('billing-contracts').textContent = activeClients.length;
-            
-            const tbody = document.getElementById('billing-table');
-            
-            if (activeClients.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-vx-muted">Nenhum cliente ativo</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = activeClients.map(client => `
-                <tr class="border-b border-vx-border hover:bg-vx-darker transition-colors">
-                    <td class="px-6 py-4 font-medium">${safeText(client.name)}</td>
-                    <td class="px-6 py-4">${formatCurrency(client.value)}/mes</td>
-                    <td class="px-6 py-4">${safeText(client.months)}</td>
-                    <td class="px-6 py-4 font-display font-bold gradient-text">${formatCurrency(parseFloat(client.value) * parseInt(client.months))}</td>
-                </tr>
-            `).join('');
         }
 
         function renderGoals() {
@@ -1276,10 +1514,11 @@ const STORAGE_KEYS = {
                 try {
                     await removeResource('contracts', id);
                 } catch (error) {
-                    console.warn('Falha ao excluir contrato na API. Removendo localmente.', error);
+                    console.warn('Falha ao excluir contrato na API.', error);
+                    showToast(error.message || 'Nao foi possivel excluir o contrato na API.', 'error');
+                    return;
                 }
                 contracts = contracts.filter(c => c.id !== id);
-                saveData();
                 renderContracts();
                 showToast('Contrato excluído', 'success');
             }
@@ -1311,10 +1550,10 @@ const STORAGE_KEYS = {
             const auto = contracts.filter(c => c.autoRenew);
             const mrr = active.reduce((sum, c) => sum + getClientValue(c.clientId), 0);
 
-            document.getElementById('contracts-active').textContent = active.length;
-            document.getElementById('contracts-renewal').textContent = renewals.length;
-            document.getElementById('contracts-auto').textContent = auto.length;
-            document.getElementById('contracts-mrr').textContent = formatCurrency(mrr);
+            document.getElementById('contracts-active').textContent = contractSummary?.active ?? active.length;
+            document.getElementById('contracts-renewal').textContent = contractSummary?.expiringSoon ?? renewals.length;
+            document.getElementById('contracts-auto').textContent = contractSummary?.autoRenew ?? auto.length;
+            document.getElementById('contracts-mrr').textContent = formatCurrency(Number(contractSummary?.mrr ?? mrr));
 
             if (contracts.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-vx-muted">Nenhum contrato cadastrado</td></tr>';
@@ -1391,10 +1630,11 @@ const STORAGE_KEYS = {
                 try {
                     await removeResource('deliveries', id);
                 } catch (error) {
-                    console.warn('Falha ao excluir entrega na API. Removendo localmente.', error);
+                    console.warn('Falha ao excluir entrega na API.', error);
+                    showToast(error.message || 'Nao foi possivel excluir a entrega na API.', 'error');
+                    return;
                 }
                 deliveries = deliveries.filter(d => d.id !== id);
-                saveData();
                 renderDeliveries();
                 showToast('Entrega excluída', 'success');
             }
@@ -1442,10 +1682,10 @@ const STORAGE_KEYS = {
                 : deliveries;
 
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('deliveries-pending').textContent = visibleDeliveries.filter(d => d.status === 'pendente').length;
-            document.getElementById('deliveries-production').textContent = visibleDeliveries.filter(d => d.status === 'producao').length;
-            document.getElementById('deliveries-approved').textContent = visibleDeliveries.filter(d => d.status === 'aprovado').length;
-            document.getElementById('deliveries-late').textContent = visibleDeliveries.filter(d => d.deadline < today && d.status !== 'aprovado').length;
+            document.getElementById('deliveries-pending').textContent = deliverySummary?.pending ?? visibleDeliveries.filter(d => d.status === 'pendente').length;
+            document.getElementById('deliveries-production').textContent = deliverySummary?.production ?? visibleDeliveries.filter(d => d.status === 'producao').length;
+            document.getElementById('deliveries-approved').textContent = deliverySummary?.approved ?? visibleDeliveries.filter(d => d.status === 'aprovado').length;
+            document.getElementById('deliveries-late').textContent = deliverySummary?.late ?? visibleDeliveries.filter(d => d.deadline < today && d.status !== 'aprovado').length;
 
             const columns = [
                 { id: 'pendente', title: 'Pendente', color: 'bg-yellow-500' },
@@ -1487,7 +1727,12 @@ const STORAGE_KEYS = {
             }).join('');
 
             setupDeliveryDragAndDrop();
+            renderPagination('deliveries-pagination', deliveriesPage, 'changeDeliveriesPage', 'entrega');
         }
+
+        window.changeDeliveriesPage = function changeDeliveriesPage(pageNumber) {
+            loadDeliveriesPage(pageNumber);
+        };
 
         function setupDeliveryDragAndDrop() {
             const cards = document.querySelectorAll('.delivery-card');
@@ -1501,11 +1746,22 @@ const STORAGE_KEYS = {
                 });
             }
 
-            function moveDeliveryToStatus(id, status) {
+            async function moveDeliveryToStatus(id, status) {
                 const delivery = deliveries.find(d => d.id === id);
                 if (delivery && delivery.status !== status) {
+                    const previousStatus = delivery.status;
                     delivery.status = status;
-                    saveData();
+                    try {
+                        if (backendAvailable && window.VXApi?.deliveries?.updateStatus) {
+                            const saved = await window.VXApi.deliveries.updateStatus(delivery.id, status);
+                            Object.assign(delivery, saved || delivery);
+                        }
+                    } catch (error) {
+                        delivery.status = previousStatus;
+                        renderDeliveries();
+                        showToast('Nao foi possivel atualizar a entrega no banco.', 'error');
+                        return;
+                    }
                     renderDeliveries();
                     showToast('Status da entrega atualizado', 'success');
                 }
@@ -1526,8 +1782,6 @@ const STORAGE_KEYS = {
                 card.addEventListener('pointerdown', (e) => {
                     if (e.target.closest('button, a, input, select, textarea')) return;
                     if (e.button !== undefined && e.button !== 0) return;
-
-                    e.preventDefault();
 
                     e.preventDefault();
 
@@ -1661,7 +1915,9 @@ const STORAGE_KEYS = {
             try {
                 await removeResource('performanceRecords', idString);
             } catch (error) {
-                console.warn('Falha ao excluir performance na API. A remocao local sera apenas temporaria na sessao.', error);
+                console.warn('Falha ao excluir performance na API.', error);
+                showToast(error.message || 'Nao foi possivel excluir a performance na API.', 'error');
+                return;
             }
 
             clientPerformance = clientPerformance.filter(r => String(r.id) !== idString);
@@ -1670,8 +1926,6 @@ const STORAGE_KEYS = {
                 showToast('Registro de performance não encontrado', 'error');
                 return;
             }
-
-            saveData();
             renderClientPerformance();
             renderDashboardCharts();
             renderExecutiveDashboard();
@@ -1775,7 +2029,9 @@ const STORAGE_KEYS = {
             try {
                 await removeResource('financeEntries', idString);
             } catch (error) {
-                console.warn('Falha ao excluir lancamento financeiro na API. A remocao local sera apenas temporaria na sessao.', error);
+                console.warn('Falha ao excluir lancamento financeiro na API.', error);
+                showToast(error.message || 'Nao foi possivel excluir o lancamento na API.', 'error');
+                return;
             }
 
             financeEntries = financeEntries.filter(e => String(e.id) !== idString);
@@ -1784,8 +2040,6 @@ const STORAGE_KEYS = {
                 showToast('Lançamento não encontrado', 'error');
                 return;
             }
-
-            saveData();
             renderRealFinance();
             renderExecutiveDashboard();
             showToast('Lançamento excluído', 'success');
@@ -1805,25 +2059,36 @@ const STORAGE_KEYS = {
             const forecast = revenue + recurringFromClients;
             const netProfit = revenue - expenses - commissions - taxes;
             const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+            const summary = financeSummary || {};
+            const summaryRecurring = Number(summary.recurringRevenue ?? (recurringFromClients + recurringEntries));
+            const summaryForecast = Number(summary.forecast ?? forecast);
+            const summaryNetProfit = Number(summary.netProfit ?? netProfit);
+            const summaryMargin = Number(summary.margin ?? margin);
+            const summaryOverdue = Number(summary.overdue ?? overdue);
+            const summaryAutoBilling = Number(summary.autoBillingCount ?? autoBilling);
+            const summaryCommissions = Number(summary.commissions ?? commissions);
+            const summaryTaxes = Number(summary.taxes ?? taxes);
+            const summaryGrossRevenue = Number(summary.grossRevenue ?? revenue);
+            const summaryExpenses = Number(summary.expenses ?? expenses);
 
             const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v};
-            set('fin-recurring', formatCurrency(recurringFromClients + recurringEntries));
-            set('fin-forecast', formatCurrency(forecast));
-            set('fin-net-profit', formatCurrency(netProfit));
-            set('fin-margin', `${margin.toFixed(1)}%`);
-            set('fin-overdue', formatCurrency(overdue));
-            set('fin-auto-billing', autoBilling);
-            set('fin-commissions', formatCurrency(commissions));
-            set('fin-taxes', formatCurrency(taxes));
+            set('fin-recurring', formatCurrency(summaryRecurring));
+            set('fin-forecast', formatCurrency(summaryForecast));
+            set('fin-net-profit', formatCurrency(summaryNetProfit));
+            set('fin-margin', `${summaryMargin.toFixed(1)}%`);
+            set('fin-overdue', formatCurrency(summaryOverdue));
+            set('fin-auto-billing', summaryAutoBilling);
+            set('fin-commissions', formatCurrency(summaryCommissions));
+            set('fin-taxes', formatCurrency(summaryTaxes));
 
             const dre = document.getElementById('dre-list');
             if (dre) {
                 const rows = [
-                    ['Receita Bruta', revenue],
-                    ['(-) Despesas', -expenses],
-                    ['(-) Comissões', -commissions],
-                    ['(-) Impostos', -taxes],
-                    ['Lucro Líquido', netProfit]
+                    ['Receita Bruta', summaryGrossRevenue],
+                    ['(-) Despesas', -summaryExpenses],
+                    ['(-) Comissões', -summaryCommissions],
+                    ['(-) Impostos', -summaryTaxes],
+                    ['Lucro Líquido', summaryNetProfit]
                 ];
                 dre.innerHTML = rows.map(([label,value]) => `
                     <div class="flex items-center justify-between bg-vx-darker rounded-xl border border-vx-border p-4">
@@ -1903,12 +2168,31 @@ const STORAGE_KEYS = {
             document.getElementById('commission-modal').classList.remove('flex');
         }
 
-        function deleteCommissionSale(id) {
+        async function deleteCommissionSale(id) {
+            try {
+                await removeResource('commissionSales', id);
+            } catch (error) {
+                console.warn('Falha ao excluir comissao na API.', error);
+                showToast(error.message || 'Nao foi possivel excluir a comissao na API.', 'error');
+                return;
+            }
             commissionSales = commissionSales.filter(s => s.id !== id);
-            saveData();
             renderCommissions();
             renderRanking();
-            showToast('Venda removida das comissões', 'success');
+            showToast('Venda removida das comissoes', 'success');
+        }
+
+        function populateCommissionMemberFilter() {
+            const select = document.getElementById('commission-member-filter');
+            if (!select) return;
+
+            const currentValue = select.value || '';
+            const members = getCommercialMembers();
+            select.innerHTML = '<option value="">Todos os membros</option>' +
+                members.map(member => `<option value="${safeText(member.id)}">${safeText(member.name)} • ${safeText(getTeamRoleLabel(member.role))}</option>`).join('');
+            if ([...select.options].some(option => option.value === currentValue)) {
+                select.value = currentValue;
+            }
         }
 
         function getMemberCommissionStats(memberId) {
@@ -1920,20 +2204,30 @@ const STORAGE_KEYS = {
             return { sales, totalRevenue, totalCommission, goal, goalProgress };
         }
 
+        function getRankingMemberStats(memberId) {
+            return commissionRanking?.ranking?.find(item => item.memberId === memberId) || null;
+        }
+
         function renderCommissions() {
             const membersList = document.getElementById('commission-members-list');
             const salesList = document.getElementById('commission-sales-list');
             if (!membersList || !salesList) return;
 
             const members = getCommercialMembers();
-            const totalRevenue = commissionSales.reduce((sum, s) => sum + (parseFloat(s.value || 0)), 0);
-            const totalCommission = commissionSales.reduce((sum, s) => sum + ((parseFloat(s.value || 0) * parseFloat(s.percent || 0)) / 100), 0);
+            const totalRevenue = commissionSalesMetrics
+                ? Number(commissionSalesMetrics.totalRevenue || 0)
+                : commissionSales.reduce((sum, s) => sum + (parseFloat(s.value || 0)), 0);
+            const totalCommission = commissionSalesMetrics
+                ? Number(commissionSalesMetrics.totalCommission || 0)
+                : commissionSales.reduce((sum, s) => sum + ((parseFloat(s.value || 0) * parseFloat(s.percent || 0)) / 100), 0);
 
-            document.getElementById('commissions-total-sales').textContent = commissionSales.length;
+            document.getElementById('commissions-total-sales').textContent = commissionSalesMetrics?.totalSales ?? commissionSalesPage.totalElements ?? commissionSales.length;
             document.getElementById('commissions-total-revenue').textContent = formatCurrency(totalRevenue);
             document.getElementById('commissions-total-paid').textContent = formatCurrency(totalCommission);
 
-            const avgGoal = members.length ? Math.round(members.reduce((sum, m) => sum + getMemberCommissionStats(m.id).goalProgress, 0) / members.length) : 0;
+            const avgGoal = commissionRanking?.averageGoalProgress !== undefined
+                ? Number(commissionRanking.averageGoalProgress || 0)
+                : (members.length ? Math.round(members.reduce((sum, m) => sum + getMemberCommissionStats(m.id).goalProgress, 0) / members.length) : 0);
             document.getElementById('commissions-goal-average').textContent = `${avgGoal}%`;
 
             if (!members.length) {
@@ -1941,6 +2235,11 @@ const STORAGE_KEYS = {
             } else {
                 membersList.innerHTML = members.map(member => {
                     const stats = getMemberCommissionStats(member.id);
+                    const apiStats = getRankingMemberStats(member.id);
+                    const salesCount = apiStats ? Number(apiStats.sales || 0) : stats.sales.length;
+                    const totalMemberRevenue = apiStats ? Number(apiStats.revenue || 0) : stats.totalRevenue;
+                    const totalMemberCommission = apiStats ? Number(apiStats.commission || 0) : stats.totalCommission;
+                    const goalProgress = apiStats ? Number(apiStats.goalProgress || 0) : stats.goalProgress;
                     return `
                         <div class="bg-vx-darker rounded-xl border border-vx-border p-4">
                             <div class="flex items-start justify-between mb-3">
@@ -1948,15 +2247,15 @@ const STORAGE_KEYS = {
                                     <p class="font-bold">${safeText(member.name)}</p>
                                     <p class="text-vx-muted text-sm">${safeText(getTeamRoleLabel(member.role))}</p>
                                 </div>
-                                <span class="px-3 py-1 rounded-full bg-vx-purple/20 text-vx-pink text-xs">${stats.sales.length} vendas</span>
+                                <span class="px-3 py-1 rounded-full bg-vx-purple/20 text-vx-pink text-xs">${salesCount} vendas</span>
                             </div>
                             <div class="grid grid-cols-3 gap-3 mb-3">
-                                <div><p class="text-xs text-vx-muted">Volume</p><p class="font-bold">${formatCurrency(stats.totalRevenue)}</p></div>
-                                <div><p class="text-xs text-vx-muted">Comissão</p><p class="font-bold text-green-400">${formatCurrency(stats.totalCommission)}</p></div>
-                                <div><p class="text-xs text-vx-muted">Meta</p><p class="font-bold">${stats.goalProgress.toFixed(0)}%</p></div>
+                                <div><p class="text-xs text-vx-muted">Volume</p><p class="font-bold">${formatCurrency(totalMemberRevenue)}</p></div>
+                                <div><p class="text-xs text-vx-muted">Comissão</p><p class="font-bold text-green-400">${formatCurrency(totalMemberCommission)}</p></div>
+                                <div><p class="text-xs text-vx-muted">Meta</p><p class="font-bold">${goalProgress.toFixed(0)}%</p></div>
                             </div>
                             <div class="h-2 bg-vx-border rounded-full overflow-hidden">
-                                <div class="h-full progress-bar rounded-full" style="width:${stats.goalProgress}%"></div>
+                                <div class="h-full progress-bar rounded-full" style="width:${Math.min(goalProgress, 100)}%"></div>
                             </div>
                         </div>
                     `;
@@ -1965,6 +2264,7 @@ const STORAGE_KEYS = {
 
             if (!commissionSales.length) {
                 salesList.innerHTML = '<p class="text-vx-muted text-sm">Nenhuma venda registrada.</p>';
+                renderPagination('commission-sales-pagination', commissionSalesPage, 'changeCommissionSalesPage', 'comissão');
             } else {
                 salesList.innerHTML = commissionSales.slice().reverse().map(sale => {
                     const member = teamMembers.find(m => m.id === sale.memberId);
@@ -1988,10 +2288,17 @@ const STORAGE_KEYS = {
                         </div>
                     `;
                 }).join('');
+                renderPagination('commission-sales-pagination', commissionSalesPage, 'changeCommissionSalesPage', 'comissão');
             }
         }
 
+        window.changeCommissionSalesPage = function changeCommissionSalesPage(pageNumber) {
+            loadCommissionSalesPage(pageNumber);
+        };
+
         function getMemberXP(member) {
+            const apiStats = getRankingMemberStats(member.id);
+            if (apiStats) return Number(apiStats.xp || 0);
             const taskStats = typeof getMemberTaskStats === 'function' ? getMemberTaskStats(member) : { completed: parseInt(member.completed || 0), productivity: parseInt(member.performance || 0) };
             const commissionStats = getMemberCommissionStats(member.id);
             return (taskStats.completed * 80) + (parseInt(member.performance || taskStats.productivity || 0) * 20) + (commissionStats.sales.length * 250);
@@ -2026,6 +2333,41 @@ const STORAGE_KEYS = {
         function renderRanking() {
             const grid = document.getElementById('ranking-grid');
             if (!grid) return;
+
+            if (commissionRanking?.ranking?.length) {
+                const topCloser = document.getElementById('ranking-top-closer');
+                const topSdr = document.getElementById('ranking-top-sdr');
+                const topTraffic = document.getElementById('ranking-top-gestor');
+                const topMarketing = document.getElementById('ranking-top-designer');
+                if (topCloser) topCloser.textContent = commissionRanking.topCloser || '-';
+                if (topSdr) topSdr.textContent = commissionRanking.topSdr || '-';
+                if (topTraffic) topTraffic.textContent = commissionRanking.topTraffic || '-';
+                if (topMarketing) topMarketing.textContent = commissionRanking.topMarketing || '-';
+
+                grid.innerHTML = commissionRanking.ranking.map((member, index) => {
+                    const productivity = Math.min(Number(member.productivity || 0), 100);
+                    const goalProgress = Math.min(Number(member.goalProgress || 0), 100);
+                    return `
+                        <div class="bg-vx-darker rounded-2xl border border-vx-border p-5 hover:border-vx-purple transition-all">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="w-10 h-10 rounded-xl bg-vx-purple/20 flex items-center justify-center font-bold gradient-text">#${index + 1}</span>
+                                <span class="px-3 py-1 rounded-full bg-vx-purple/20 text-vx-pink text-xs">${safeText(member.badge)}</span>
+                            </div>
+                            <h3 class="font-display text-xl font-bold">${safeText(member.name)}</h3>
+                            <p class="text-vx-muted text-sm mb-4">${safeText(getTeamRoleLabel(member.role))}</p>
+                            <div class="grid grid-cols-3 gap-3 mb-4">
+                                <div class="bg-vx-card rounded-xl p-3 border border-vx-border"><p class="text-xs text-vx-muted">XP</p><p class="font-bold">${Number(member.xp || 0)}</p></div>
+                                <div class="bg-vx-card rounded-xl p-3 border border-vx-border"><p class="text-xs text-vx-muted">Nível</p><p class="font-bold gradient-text">${Number(member.level || 1)}</p></div>
+                                <div class="bg-vx-card rounded-xl p-3 border border-vx-border"><p class="text-xs text-vx-muted">Meta</p><p class="font-bold">${goalProgress.toFixed(0)}%</p></div>
+                            </div>
+                            <div class="h-2 bg-vx-border rounded-full overflow-hidden">
+                                <div class="h-full progress-bar rounded-full" style="width:${productivity}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                return;
+            }
 
             renderTopRole('closer', 'ranking-top-closer');
             renderTopRole('sdr', 'ranking-top-sdr');
@@ -2234,10 +2576,11 @@ const STORAGE_KEYS = {
                 try {
                     await removeResource('teamMembers', id);
                 } catch (error) {
-                    console.warn('Falha ao excluir membro na API. Removendo localmente.', error);
+                    console.warn('Falha ao excluir membro na API.', error);
+                    showToast(error.message || 'Nao foi possivel excluir o membro na API.', 'error');
+                    return;
                 }
                 teamMembers = teamMembers.filter(m => m.id !== id);
-                saveData();
                 renderTeam();
                 renderExecutiveDashboard();
                 showToast('Membro excluído', 'success');
@@ -2410,11 +2753,15 @@ const STORAGE_KEYS = {
             setText('team-tasks', tasks);
             setText('team-completed', completed);
             setText('team-productivity', `${avgProductivity}%`);
-            setText('team-role-marketing', teamMembers.filter(m => m.role === 'marketing').length);
-            setText('team-role-trafego', teamMembers.filter(m => m.role === 'trafego').length);
-            setText('team-role-sdr', teamMembers.filter(m => m.role === 'sdr').length);
-            setText('team-role-closer', teamMembers.filter(m => m.role === 'closer').length);
-            setText('team-role-dev', teamMembers.filter(m => m.role === 'dev').length);
+            setText('team-total', teamSummary?.total ?? total);
+            setText('team-tasks', teamSummary?.tasks ?? tasks);
+            setText('team-completed', teamSummary?.completed ?? completed);
+            setText('team-productivity', `${teamSummary?.productivity ?? avgProductivity}%`);
+            setText('team-role-marketing', teamSummary?.marketing ?? teamMembers.filter(m => m.role === 'marketing').length);
+            setText('team-role-trafego', teamSummary?.traffic ?? teamMembers.filter(m => m.role === 'trafego').length);
+            setText('team-role-sdr', teamSummary?.sdr ?? teamMembers.filter(m => m.role === 'sdr').length);
+            setText('team-role-closer', teamSummary?.closer ?? teamMembers.filter(m => m.role === 'closer').length);
+            setText('team-role-dev', teamSummary?.developer ?? teamMembers.filter(m => m.role === 'dev').length);
 
             const filterLabel = document.getElementById('team-filter-label');
             if (filterLabel) {
@@ -2501,15 +2848,29 @@ const STORAGE_KEYS = {
             loadTeamPage(pageNumber);
         };
 
-                function updateExecutiveMargin() {
+        async function updateExecutiveMargin() {
             const input = document.getElementById('exec-profit-margin-input');
             const value = Math.max(0, Math.min(100, parseFloat(input?.value || 0) || 0));
+            const previousValue = executiveSettings.profitMargin;
 
-            executiveSettings.profitMargin = value;
+            if (!window.VXApi?.settings?.save || !window.VXAuth?.hasRole?.('ADMIN', 'GESTOR')) {
+                if (input) input.value = previousValue;
+                showToast('Apenas ADMIN ou GESTOR pode alterar a margem executiva', 'error');
+                return;
+            }
 
-            renderExecutiveDashboard();
-
-            showToast('Margem de lucro atualizada automaticamente no executivo', 'success');
+            try {
+                crmSettings = await window.VXApi.settings.save(buildSettingsPayload({ defaultProfitMargin: value }));
+                executiveSettings.profitMargin = Number(crmSettings.defaultProfitMargin ?? value);
+                renderExecutiveDashboard();
+                renderSettings();
+                showToast('Margem de lucro salva nas configuracoes', 'success');
+            } catch (error) {
+                executiveSettings.profitMargin = previousValue;
+                if (input) input.value = previousValue;
+                renderExecutiveDashboard();
+                showToast(error.message || 'Nao foi possivel salvar a margem executiva', 'error');
+            }
         }
 
         
@@ -2747,26 +3108,33 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
 
         // Client dashboard functions
         function getClientDashboardData(clientId) {
-            if (!clientDashboards[clientId]) {
-                clientDashboards[clientId] = {
-                    services: '',
-                    nextSteps: '',
-                    history: '',
-                    files: '',
-                    updatedAt: new Date().toISOString()
-                };
-            }
-            return clientDashboards[clientId];
+            return clientDashboards[clientId] || {
+                services: '',
+                nextSteps: '',
+                history: '',
+                files: '',
+                updatedAt: null
+            };
         }
 
-        function openClientDashboard(clientId) {
+        async function openClientDashboard(clientId) {
             const client = clients.find(c => c.id === clientId);
             if (!client) {
                 showToast('Cliente não encontrado', 'error');
                 return;
             }
 
-            const data = getClientDashboardData(clientId);
+            let data = getClientDashboardData(clientId);
+            if (window.VXApi?.clients?.dashboard && backendAvailable) {
+                try {
+                    data = await window.VXApi.clients.dashboard(clientId);
+                    clientDashboards[clientId] = data;
+                } catch (error) {
+                    showToast(error.message || 'Nao foi possivel carregar o dashboard do cliente', 'error');
+                    return;
+                }
+            }
+
             const modal = document.getElementById('client-dashboard-modal');
             const today = new Date();
             const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -2809,20 +3177,28 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
             document.getElementById('client-dashboard-modal').classList.remove('flex');
         }
 
-        function saveClientDashboard() {
+        async function saveClientDashboard() {
             const clientId = document.getElementById('client-dashboard-id').value;
             if (!clientId) return;
 
-            clientDashboards[clientId] = {
+            if (!window.VXApi?.clients?.saveDashboard || !backendAvailable) {
+                showToast('API indisponivel para salvar o dashboard do cliente', 'error');
+                return;
+            }
+
+            const payload = {
                 services: document.getElementById('client-dashboard-services').value,
                 nextSteps: document.getElementById('client-dashboard-next-steps').value,
                 history: document.getElementById('client-dashboard-history').value,
-                files: document.getElementById('client-dashboard-files').value,
-                updatedAt: new Date().toISOString()
+                files: document.getElementById('client-dashboard-files').value
             };
 
-            saveData();
-            showToast('Dashboard do cliente salvo', 'success');
+            try {
+                clientDashboards[clientId] = await window.VXApi.clients.saveDashboard(clientId, payload);
+                showToast('Dashboard do cliente salvo', 'success');
+            } catch (error) {
+                showToast(error.message || 'Nao foi possivel salvar o dashboard do cliente', 'error');
+            }
         }
 
         function renderClientDashboardDeliveries(items) {
@@ -2990,7 +3366,6 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
 
                 clients = clients.filter(c => c.id !== id);
                 delete clientDashboards[id];
-                saveData();
                 updateAllMetrics();
                 renderClientsTable();
                 renderKanban();
@@ -3060,7 +3435,9 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
             try {
                 await removeResource('events', idString);
             } catch (error) {
-                console.warn('Falha ao excluir evento na API. A remocao local sera apenas temporaria na sessao.', error);
+                console.warn('Falha ao excluir evento na API.', error);
+                showToast(error.message || 'Nao foi possivel excluir a reuniao na API.', 'error');
+                return;
             }
 
             events = events.filter(e => String(e.id) !== idString);
@@ -3069,8 +3446,6 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 showToast('Reunião não encontrada para excluir', 'error');
                 return;
             }
-
-            saveData();
 
             renderCalendar();
             renderUpcomingEvents();
@@ -3086,7 +3461,7 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
 
         function changeMonth(delta) {
             currentMonth.setMonth(currentMonth.getMonth() + delta);
-            renderCalendar();
+            loadCalendarEvents();
         }
 
         // Drag and drop
@@ -3162,13 +3537,18 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     const previousPhase = client.phase;
                     client.phase = newPhase;
                     try {
-                        await persistClient(client, true);
+                        if (!window.VXApi?.clients?.updatePhase || !backendAvailable) {
+                            throw new Error('API indisponivel para atualizar fase.');
+                        }
+                        const savedClient = await (window.VXClientsPage?.updateClientPhase
+                            ? window.VXClientsPage.updateClientPhase(client.id, newPhase)
+                            : window.VXApi.clients.updatePhase(client.id, newPhase));
+                        Object.assign(client, savedClient);
                     } catch (error) {
                         client.phase = previousPhase;
                         showToast('Nao foi possivel atualizar no banco. Tente novamente.', 'error');
                         return;
                     }
-                    saveData();
                     updateAllMetrics();
                     renderKanban();
                     showToast(`Cliente movido para ${getPhaseLabel(newPhase)}`, 'success');
@@ -3310,16 +3690,10 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                         clients.push(normalizedClient);
                     }
                 } catch (error) {
-                    console.warn('Falha ao salvar cliente na API. Usando fallback local.', error);
-                    if (isUpdate) {
-                        clients[existingIndex] = { ...clients[existingIndex], ...clientData };
-                    } else {
-                        clients.push(clientData);
-                    }
-                    showToast('API indisponivel. Cliente salvo localmente.', 'error');
+                    console.warn('Falha ao salvar cliente na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar o cliente na API.', 'error');
+                    return;
                 }
-                
-                saveData();
                 closeClientModal();
                 updateAllMetrics();
                 renderKanban();
@@ -3339,14 +3713,13 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 try {
                     currentGoal = await persistResource('goals', goalData, index >= 0) || goalData;
                 } catch (error) {
-                    console.warn('Falha ao salvar meta na API. Usando fallback local.', error);
-                    currentGoal = goalData;
+                    console.warn('Falha ao salvar meta na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar a meta na API.', 'error');
+                    return;
                 }
 
                 if (index >= 0) goals[index] = { ...goals[index], ...currentGoal };
                 else goals.unshift(currentGoal);
-                
-                saveData();
                 closeGoalModal();
                 updateAllMetrics();
                 renderGoals();
@@ -3377,12 +3750,10 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     if (index >= 0) events[index] = { ...events[index], ...normalized };
                     else events.push(normalized);
                 } catch (error) {
-                    console.warn('Falha ao salvar evento na API. Usando fallback local.', error);
-                    if (index >= 0) events[index] = { ...events[index], ...eventData };
-                    else events.push(eventData);
+                    console.warn('Falha ao salvar evento na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar a reuniao na API.', 'error');
+                    return;
                 }
-
-                saveData();
                 closeEventModal();
                 renderCalendar();
                 showToast('Evento criado', 'success');
@@ -3410,11 +3781,10 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     if (index >= 0) contracts[index] = { ...contracts[index], ...normalized };
                     else contracts.push(normalized);
                 } catch (error) {
-                    console.warn('Falha ao salvar contrato na API. Usando fallback local.', error);
-                    if (index >= 0) contracts[index] = { ...contracts[index], ...data };
-                    else contracts.push(data);
+                    console.warn('Falha ao salvar contrato na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar o contrato na API.', 'error');
+                    return;
                 }
-                saveData();
                 closeContractModal();
                 renderContracts();
                 renderGoals();
@@ -3442,11 +3812,10 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     if (index >= 0) deliveries[index] = { ...deliveries[index], ...normalized };
                     else deliveries.push(normalized);
                 } catch (error) {
-                    console.warn('Falha ao salvar entrega na API. Usando fallback local.', error);
-                    if (index >= 0) deliveries[index] = { ...deliveries[index], ...data };
-                    else deliveries.push(data);
+                    console.warn('Falha ao salvar entrega na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar a entrega na API.', 'error');
+                    return;
                 }
-                saveData();
                 closeDeliveryModal();
                 renderDeliveries();
                 showToast('Entrega salva', 'success');
@@ -3472,7 +3841,9 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 try {
                     savedData = await persistResource('performanceRecords', data, index >= 0) || data;
                 } catch (error) {
-                    console.warn('Falha ao salvar performance na API. Usando fallback local.', error);
+                    console.warn('Falha ao salvar performance na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar as metricas na API.', 'error');
+                    return;
                 }
 
                 if (index >= 0) {
@@ -3482,8 +3853,6 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     clientPerformance.push(savedData);
                     showToast('Métricas salvas e painel recalculado', 'success');
                 }
-
-                saveData();
                 closePerformanceModal();
                 const filter = document.getElementById('performance-client-filter');
                 if (filter) filter.value = data.clientId;
@@ -3515,7 +3884,9 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     const saved = await persistResource('financeEntries', data, index >= 0, toFinancePayload);
                     savedData = normalizeFinanceEntry({ ...data, ...saved });
                 } catch (error) {
-                    console.warn('Falha ao salvar lançamento financeiro na API. Usando fallback local.', error);
+                    console.warn('Falha ao salvar lancamento financeiro na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar o lancamento na API.', 'error');
+                    return;
                 }
 
                 if (index >= 0) {
@@ -3525,14 +3896,12 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     financeEntries.push(savedData);
                     showToast('Lançamento financeiro salvo', 'success');
                 }
-
-                saveData();
                 closeFinanceModal();
                 renderRealFinance();
                 renderExecutiveDashboard();
             });
 // Commission form
-            document.getElementById('commission-form')?.addEventListener('submit', (e) => {
+            document.getElementById('commission-form')?.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
                 const id = document.getElementById('commission-id').value || generateId();
@@ -3547,10 +3916,18 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 };
 
                 const index = commissionSales.findIndex(s => s.id === id);
-                if (index >= 0) commissionSales[index] = { ...commissionSales[index], ...data };
-                else commissionSales.push(data);
+                let savedData = data;
+                try {
+                    savedData = await persistResource('commissionSales', data, index >= 0) || data;
+                } catch (error) {
+                    console.warn('Falha ao salvar comissao na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar a comissao na API.', 'error');
+                    return;
+                }
 
-                saveData();
+                if (index >= 0) commissionSales[index] = { ...commissionSales[index], ...savedData };
+                else commissionSales.push(savedData);
+
                 closeCommissionModal();
                 renderCommissions();
                 renderRanking();
@@ -3588,13 +3965,13 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     const saved = await persistResource('teamMembers', data, index >= 0, toTeamPayload);
                     savedData = normalizeTeamMember({ ...data, ...saved });
                 } catch (error) {
-                    console.warn('Falha ao salvar membro na API. Usando fallback local.', error);
+                    console.warn('Falha ao salvar membro na API.', error);
+                    showToast(error.message || 'Nao foi possivel salvar o membro na API.', 'error');
+                    return;
                 }
 
                 if (index >= 0) teamMembers[index] = { ...teamMembers[index], ...savedData };
                 else teamMembers.push(savedData);
-
-                saveData();
                 closeTeamMemberModal();
                 renderTeam();
                 renderExecutiveDashboard();
@@ -3604,9 +3981,9 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
             });
 
             // Agency goals form
-            document.getElementById('agency-goals-form')?.addEventListener('submit', (e) => {
+            document.getElementById('agency-goals-form')?.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                agencyGoals = {
+                const nextGoals = {
                     revenue: parseCurrency(document.getElementById('agency-goal-revenue').value),
                     newClients: parseInt(document.getElementById('agency-goal-new-clients').value) || 0,
                     averageTicket: parseCurrency(document.getElementById('agency-goal-ticket').value),
@@ -3614,21 +3991,46 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                     proposals: parseInt(document.getElementById('agency-goal-proposals').value) || 0,
                     meetings: parseInt(document.getElementById('agency-goal-meetings').value) || 0
                 };
-                saveData();
-                closeAgencyGoalsModal();
-                renderGoals();
-                showToast('Metas da agência atualizadas', 'success');
+
+                if (!window.VXApi?.settings?.save || !window.VXAuth?.hasRole?.('ADMIN', 'GESTOR')) {
+                    showToast('API de configuracoes indisponivel para salvar metas', 'error');
+                    return;
+                }
+
+                try {
+                    crmSettings = await window.VXApi.settings.save(buildSettingsPayload({
+                        agencyRevenueGoal: nextGoals.revenue,
+                        agencyNewClientsGoal: nextGoals.newClients,
+                        agencyAverageTicketGoal: nextGoals.averageTicket,
+                        agencyRetentionGoal: nextGoals.retention,
+                        agencyProposalsGoal: nextGoals.proposals,
+                        agencyMeetingsGoal: nextGoals.meetings
+                    }));
+                    applySettingsToAgencyGoals(crmSettings);
+                    closeAgencyGoalsModal();
+                    renderGoals();
+                    renderSettings();
+                    showToast('Metas da agência atualizadas', 'success');
+                } catch (error) {
+                    showToast(error.message || 'Nao foi possivel salvar as metas na API', 'error');
+                }
             });
 
             // Search and filter
             document.getElementById('client-search')?.addEventListener('input', debounce(() => loadClientsPage(0), 350));
             document.getElementById('filter-phase')?.addEventListener('change', () => loadClientsPage(0));
             document.getElementById('contracts-status-filter')?.addEventListener('change', () => loadContractsPage(0));
+            document.getElementById('deliveries-client-filter')?.addEventListener('change', () => loadDeliveriesPage(0));
+            document.getElementById('deliveries-status-filter')?.addEventListener('change', () => loadDeliveriesPage(0));
+            document.getElementById('deliveries-owner-filter')?.addEventListener('input', debounce(() => loadDeliveriesPage(0), 350));
+            document.getElementById('calendar-client-filter')?.addEventListener('change', () => loadCalendarEvents());
+            document.getElementById('calendar-status-filter')?.addEventListener('change', () => loadCalendarEvents());
             ['finance-type-filter', 'finance-status-filter', 'finance-from-filter', 'finance-to-filter'].forEach((id) => {
                 document.getElementById(id)?.addEventListener('change', () => loadFinancePage(0));
             });
             document.getElementById('team-search')?.addEventListener('input', debounce(() => loadTeamPage(0), 350));
             document.getElementById('team-role-filter')?.addEventListener('change', () => loadTeamPage(0));
+            document.getElementById('commission-member-filter')?.addEventListener('change', () => loadCommissionSalesPage(0));
             ['goals-from-filter', 'goals-to-filter'].forEach((id) => {
                 document.getElementById(id)?.addEventListener('change', () => loadGoalsPage(0));
             });
@@ -3683,10 +4085,6 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
 
         function generateId() {
             return 'id_' + Math.random().toString(36).substr(2, 9);
-        }
-
-        function saveData() {
-            return true;
         }
 
         function formatBytes(bytes) {
@@ -3782,11 +4180,19 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
         }
 
         async function refreshDocuments() {
+            if (window.VXDocumentsPage?.refresh) {
+                await window.VXDocumentsPage.refresh();
+                return;
+            }
             await hydrateUploadsFromApi();
             renderDocuments();
         }
 
         async function refreshAudit() {
+            if (window.VXAuditPage?.refresh) {
+                await window.VXAuditPage.refresh();
+                return;
+            }
             await hydrateAuditFromApi();
             renderAudit();
         }
@@ -3834,17 +4240,26 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
             }
 
             const settings = crmSettings || {};
+            const organization = crmOrganization || {};
             const set = (id, value) => {
                 const el = document.getElementById(id);
                 if (el) el.value = value ?? '';
             };
 
-            set('settings-company-name', settings.companyName || 'VertX Midia');
-            set('settings-company-email', settings.companyEmail);
-            set('settings-company-phone', settings.companyPhone);
+            set('settings-company-name', organization.name || settings.companyName || 'VertX Midia');
+            set('settings-company-email', organization.email || settings.companyEmail);
+            set('settings-company-phone', organization.phone || settings.companyPhone);
+            set('settings-company-document', organization.document || settings.companyDocument);
+            set('settings-company-website', organization.website || settings.companyWebsite);
+            set('settings-company-address', organization.address || settings.companyAddress);
             set('settings-revenue-goal', settings.defaultRevenueGoal ? formatCurrency(Number(settings.defaultRevenueGoal)) : '');
             set('settings-profit-margin', settings.defaultProfitMargin);
+            set('settings-currency', settings.defaultCurrency || 'BRL');
+            set('settings-timezone', settings.defaultTimezone || 'America/Sao_Paulo');
+            set('settings-tax-rate', settings.defaultTaxRate);
+            set('settings-commission-rate', settings.defaultCommissionRate);
             set('settings-preferences', settings.preferences);
+            set('settings-crm-rules', settings.crmRules);
         }
 
         function setupProfileAndSettings() {
@@ -3853,11 +4268,7 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 event.preventDefault();
 
                 try {
-                    const user = await window.VXApi.auth.updateProfile({
-                        name: document.getElementById('profile-name').value,
-                        position: document.getElementById('profile-position').value,
-                        photoUrl: document.getElementById('profile-photo-url').value
-                    });
+                    const user = await window.VXProfilePage.saveProfile();
                     window.VXAuth?.updateUser?.(user);
                     const userEl = document.getElementById('current-user-name');
                     if (userEl) userEl.textContent = user.name;
@@ -3873,10 +4284,7 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 event.preventDefault();
 
                 try {
-                    await window.VXApi.auth.changePassword({
-                        currentPassword: document.getElementById('password-current').value,
-                        newPassword: document.getElementById('password-new').value
-                    });
+                    await window.VXProfilePage.changePassword();
                     passwordForm.reset();
                     showToast('Senha alterada com seguranca', 'success');
                 } catch (error) {
@@ -3899,13 +4307,7 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 }
 
                 try {
-                    const document = await window.VXApi.uploads.create(file, { entityType: 'profile', entityId: user.id });
-                    const photoUrl = document.publicUrl;
-                    const updated = await window.VXApi.auth.updateProfile({
-                        name: document.getElementById('profile-name').value,
-                        position: document.getElementById('profile-position').value,
-                        photoUrl
-                    });
+                    const updated = await window.VXProfilePage.uploadPhoto(file, user.id);
                     window.VXAuth?.updateUser?.(updated);
                     profilePhotoFile.value = '';
                     const label = profilePhotoFile.closest('.document-upload-control')?.querySelector('span');
@@ -3923,14 +4325,10 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
                 if (!window.VXAuth?.hasRole?.('ADMIN', 'GESTOR')) return;
 
                 try {
-                    crmSettings = await window.VXApi.settings.save({
-                        companyName: document.getElementById('settings-company-name').value,
-                        companyEmail: document.getElementById('settings-company-email').value,
-                        companyPhone: document.getElementById('settings-company-phone').value,
-                        defaultRevenueGoal: parseCurrency(document.getElementById('settings-revenue-goal').value || '0'),
-                        defaultProfitMargin: Number(document.getElementById('settings-profit-margin').value || 0),
-                        preferences: document.getElementById('settings-preferences').value
-                    });
+                    const saved = await window.VXSettingsPage.save(crmSettings || {});
+                    crmOrganization = saved.organization;
+                    crmSettings = saved.settings;
+                    applySettingsToAgencyGoals(crmSettings);
                     renderSettings();
                     showToast('Configuracoes salvas', 'success');
                 } catch (error) {
@@ -3944,6 +4342,10 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
         }
 
         function setupDocumentsAndAudit() {
+            if (window.VXDocumentsPage || window.VXAuditPage) {
+                return;
+            }
+
             const fileInput = document.getElementById('document-file');
             const uploadForm = document.getElementById('document-upload-form');
 
@@ -4063,7 +4465,8 @@ function getPhaseLabel(phase) {
                 prospeccao: 'Prospeccao',
                 negociacao: 'Negociacao',
                 fechado: 'Fechado',
-                followup: 'Follow-up'
+                followup: 'Follow-up',
+                perdido: 'Perdido'
             };
             return labels[phase] || phase;
         }
@@ -4073,7 +4476,8 @@ function getPhaseLabel(phase) {
                 prospeccao: 'bg-blue-500/20 text-blue-400',
                 negociacao: 'bg-yellow-500/20 text-yellow-400',
                 fechado: 'bg-green-500/20 text-green-400',
-                followup: 'bg-vx-pink/20 text-vx-pink'
+                followup: 'bg-vx-pink/20 text-vx-pink',
+                perdido: 'bg-red-500/20 text-red-400'
             };
             return classes[phase] || '';
         }

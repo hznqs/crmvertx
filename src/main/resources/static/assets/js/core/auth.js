@@ -1,6 +1,6 @@
 const AUTH_TOKEN_KEY = 'vx_auth_token';
 const AUTH_REFRESH_TOKEN_KEY = 'vx_refresh_token';
-const AUTH_USER_KEY = 'vx_auth_user';
+let currentUser = null;
 
 window.VXAuth = {
     token() {
@@ -12,8 +12,7 @@ window.VXAuth = {
     },
 
     user() {
-        const value = localStorage.getItem(AUTH_USER_KEY);
-        return value ? JSON.parse(value) : null;
+        return currentUser;
     },
 
     isAuthenticated() {
@@ -30,17 +29,20 @@ window.VXAuth = {
         if (session.refreshToken) {
             localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, session.refreshToken);
         }
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
+        currentUser = session.user || null;
+        localStorage.removeItem('vx_auth_user');
     },
 
     updateUser(user) {
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        currentUser = user || null;
+        localStorage.removeItem('vx_auth_user');
     },
 
     clear() {
         localStorage.removeItem(AUTH_TOKEN_KEY);
         localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
-        localStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem('vx_auth_user');
+        currentUser = null;
     },
 
     requireAuth() {

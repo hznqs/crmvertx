@@ -10,4 +10,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSp
     long countByStatus(String status);
 
     long countByStatusAndEndDateBetween(String status, LocalDate start, LocalDate end);
+
+    long countByAutoRenewTrue();
 }
