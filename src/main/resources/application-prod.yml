@@ -1,0 +1,10 @@
+app:
+  security:
+    require-auth: ${APP_REQUIRE_AUTH:true}
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false

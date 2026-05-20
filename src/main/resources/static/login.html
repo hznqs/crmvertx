@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Login seguro do CRM VertX Midia.">
+    <title>Login - VertX Midia CRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sahibjotsaggu/San-Francisco-Pro-Fonts@master/sf-pro-display.css">
+    <script src="/assets/js/config/tailwind.config.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/styles/crm.css">
+    <link rel="stylesheet" href="/assets/styles/auth.css">
+    <script src="/assets/js/core/auth.js" defer></script>
+    <script src="/assets/js/core/api.js" defer></script>
+    <script src="/assets/js/pages/login.js" defer></script>
+</head>
+<body class="min-h-screen bg-vx-dark text-white">
+    <main class="auth-shell">
+        <aside class="auth-aside" aria-hidden="true">
+            <div class="auth-metric">
+                <span>Pipeline</span>
+                <strong>R$ 128k</strong>
+            </div>
+            <div class="auth-metric">
+                <span>Clientes ativos</span>
+                <strong>42</strong>
+            </div>
+            <div class="auth-metric">
+                <span>Retenção</span>
+                <strong>91%</strong>
+            </div>
+        </aside>
+
+        <section class="auth-panel" aria-labelledby="login-title">
+            <div class="auth-brand">
+                <p class="auth-kicker">VertX Midia CRM</p>
+                <h1 id="login-title">CRM operacional</h1>
+                <p>Entre para acompanhar clientes, funil, entregas, equipe e financeiro.</p>
+            </div>
+
+            <form id="login-form" class="auth-form" novalidate>
+                <div>
+                    <label for="login-email">Email</label>
+                    <input id="login-email" name="email" type="email" autocomplete="email" required placeholder="admin@vertxmidia.com">
+                </div>
+
+                <div>
+                    <label for="login-password">Senha</label>
+                    <div class="auth-password-field">
+                        <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Sua senha">
+                        <button id="toggle-password" type="button" aria-label="Mostrar senha">Mostrar</button>
+                    </div>
+                </div>
+
+                <p id="login-error" class="auth-error" role="alert" hidden></p>
+
+                <button id="login-submit" type="submit" class="auth-submit">
+                    Entrar no CRM
+                </button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

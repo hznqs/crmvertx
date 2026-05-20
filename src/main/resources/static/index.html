@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VertX Midia - CRM</title>
+    <script>
+        const token = localStorage.getItem('vx_auth_token');
+        window.location.replace(token ? '/app.html' : '/login.html');
+    </script>
+</head>
+<body></body>
+</html>
