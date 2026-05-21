@@ -46,7 +46,7 @@ public class SecurityConfig {
                         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
                         "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; " +
                         "img-src 'self' data: blob: https:; " +
-                        "connect-src 'self'; " +
+                        "connect-src 'self' https://crmvertxback.up.railway.app; " +
                         "object-src 'none'; " +
                         "base-uri 'self'; " +
                         "frame-ancestors 'none'"
