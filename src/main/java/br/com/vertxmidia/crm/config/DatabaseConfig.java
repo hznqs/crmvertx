@@ -25,6 +25,7 @@ public class DatabaseConfig {
         applyCredentials(databaseUrl, config);
         config.setMaximumPoolSize(Integer.parseInt(environment.getProperty("DB_POOL_SIZE", "10")));
         config.setMinimumIdle(Integer.parseInt(environment.getProperty("DB_POOL_MIN_IDLE", "2")));
+        config.setInitializationFailTimeout(Long.parseLong(environment.getProperty("DB_POOL_INITIALIZATION_FAIL_TIMEOUT", "1")));
         config.setPoolName("vertx-crm-pool");
         return new HikariDataSource(config);
     }

@@ -1,4 +1,6 @@
-const API_BASE_URL = "https://crmvertxback.up.railway.app/api";
+const API_BASE_URL = window.VX_API_BASE_URL
+    || document.querySelector('meta[name="api-base-url"]')?.content
+    || '/api';
 
 async function refreshSession() {
     const refreshToken = window.VXAuth?.refreshToken?.();

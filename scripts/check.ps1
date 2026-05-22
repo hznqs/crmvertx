@@ -1,18 +1,27 @@
 $ErrorActionPreference = "Stop"
 
 Write-Host "Validando JavaScript..."
-node -e "const fs=require('fs'); for (const file of ['src/main/resources/static/assets/js/config/tailwind.config.js','src/main/resources/static/assets/js/core/auth.js','src/main/resources/static/assets/js/core/api.js','src/main/resources/static/assets/js/pages/login.js','src/main/resources/static/assets/js/pages/crm.js']) { new Function(fs.readFileSync(file,'utf8')); console.log('ok', file); }"
+Get-ChildItem -Path "src/main/resources/static/assets/js" -Recurse -Filter "*.js" | ForEach-Object {
+    node --check $_.FullName
+    Write-Host "ok $($_.FullName)"
+}
 
 $localMaven = "C:\tmp\apache-maven-3.9.11\bin\mvn.cmd"
 
 if (Get-Command mvn -ErrorAction SilentlyContinue) {
-    Write-Host "Compilando backend..."
-    mvn -q -DskipTests compile
+    Write-Host "Rodando testes backend..."
+    mvn test
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "Gerando package..."
+    mvn -DskipTests package
     exit $LASTEXITCODE
 } elseif (Test-Path -LiteralPath $localMaven) {
-    Write-Host "Compilando backend com Maven local..."
-    & $localMaven -q -DskipTests compile
+    Write-Host "Rodando testes backend com Maven local..."
+    & $localMaven test
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "Gerando package com Maven local..."
+    & $localMaven -DskipTests package
     exit $LASTEXITCODE
 } else {
-    Write-Host "Maven nao encontrado; compile Java pulado."
+    Write-Host "Maven nao encontrado; validacao Java pulada."
 }

@@ -36,7 +36,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AppProperties appProperties) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.cors(Customizer.withDefaults());
         http.headers(headers -> headers
@@ -46,7 +46,7 @@ public class SecurityConfig {
                         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
                         "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; " +
                         "img-src 'self' data: blob: https:; " +
-                        "connect-src 'self' https://crmvertxback.up.railway.app; " +
+                        "connect-src " + connectSrc(appProperties) + "; " +
                         "object-src 'none'; " +
                         "base-uri 'self'; " +
                         "frame-ancestors 'none'"
@@ -74,6 +74,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(AppProperties appProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(appProperties.getSecurity().allowedOriginList());
+        configuration.setAllowedOriginPatterns(appProperties.getSecurity().allowedOriginPatternList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setMaxAge(3600L);
@@ -136,5 +137,21 @@ public class SecurityConfig {
                     null
             ));
         };
+    }
+
+    private String connectSrc(AppProperties appProperties) {
+        List<String> sources = appProperties.getSecurity().cspConnectSrcList();
+        if (sources.isEmpty()) {
+            return "'self'";
+        }
+        return "'self' " + String.join(" ", sources.stream()
+                .filter(this::isSafeCspSource)
+                .toList());
+    }
+
+    private boolean isSafeCspSource(String source) {
+        return source.startsWith("https://")
+                || source.startsWith("http://localhost")
+                || source.startsWith("http://127.0.0.1");
     }
 }

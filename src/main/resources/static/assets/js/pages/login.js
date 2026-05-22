@@ -66,15 +66,28 @@ document.addEventListener('DOMContentLoaded', () => {
         togglePassword.setAttribute('aria-label', visible ? 'Mostrar senha' : 'Ocultar senha');
     });
 
+    setAttemptsMessage();
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         error.hidden = true;
+
+        const email = form.email.value.trim();
+        const rawPassword = form.password.value;
+        if (!email || !rawPassword) {
+            shakeForm();
+            error.textContent = 'Informe email e senha para continuar.';
+            error.hidden = false;
+            (!email ? form.email : form.password).focus();
+            return;
+        }
+
         setSubmitLoading(true);
 
         try {
             const session = await window.VXApi.auth.login({
-                email: form.email.value,
-                password: form.password.value
+                email,
+                password: rawPassword
             });
 
             window.VXAuth.save(session);

@@ -1072,6 +1072,27 @@
 
         // Update all metrics
         function updateAllMetrics() {
+            if (window.VXDashboardPage?.renderSummary) {
+                window.VXDashboardPage.renderSummary({
+                    clients,
+                    currentGoal,
+                    metrics: dashboardMetrics,
+                    helpers: {
+                        getPhaseLabel,
+                        getPhaseClass
+                    }
+                });
+                renderClientsTable();
+                renderDashboardCharts();
+                if (document.getElementById('contracts-table')) renderContracts();
+                if (document.getElementById('deliveries-board')) renderDeliveries();
+                if (document.getElementById('team-list')) renderTeam();
+                if (document.getElementById('exec-bars')) renderExecutiveDashboard();
+                if (document.getElementById('performance-history')) renderClientPerformance();
+                if (document.getElementById('finance-list')) renderRealFinance();
+                return;
+            }
+
             const activeClients = clients.filter(c => c.phase === 'fechado');
             const monthlyRevenue = dashboardMetrics
                 ? Number(dashboardMetrics.monthlyRevenue || 0)
@@ -1122,6 +1143,11 @@
 
         // Render functions
         function renderRecentClients() {
+            if (window.VXDashboardPage?.renderRecentClients) {
+                window.VXDashboardPage.renderRecentClients(clients, { getPhaseLabel, getPhaseClass });
+                return;
+            }
+
             const tbody = document.getElementById('recent-clients-table');
             if (!tbody) return;
 
@@ -1254,6 +1280,12 @@
         };
 
         function renderKanban() {
+            if (window.VXKanbanPage?.render) {
+                window.VXKanbanPage.render(clients);
+                setupDragAndDrop();
+                return;
+            }
+
             const phases = ['prospeccao', 'negociacao', 'fechado', 'followup', 'perdido'];
             
             phases.forEach(phase => {
@@ -1292,6 +1324,11 @@
         }
 
         function renderCalendar() {
+            if (window.VXCalendarPage?.render) {
+                window.VXCalendarPage.render({ events, clients, currentMonth });
+                return;
+            }
+
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth();
 
@@ -1361,6 +1398,11 @@
         }
 
         function populateCalendarClientFilter() {
+            if (window.VXCalendarPage?.populateClientFilter) {
+                window.VXCalendarPage.populateClientFilter(clients);
+                return;
+            }
+
             const select = document.getElementById('calendar-client-filter');
             if (!select) return;
 
@@ -1424,6 +1466,19 @@
         }
 
         function renderGoals() {
+            if (window.VXGoalsPage?.render) {
+                window.VXGoalsPage.render({
+                    clients,
+                    contracts,
+                    events,
+                    goals,
+                    agencyGoals,
+                    currentGoal,
+                    pageInfo: goalsPage
+                });
+                return;
+            }
+
             const activeClients = clients.filter(c => c.phase === 'fechado');
             const monthlyRevenue = activeClients.reduce((sum, c) => sum + (parseFloat(c.value) * parseInt(c.months)), 0);
             const progress = Math.min((monthlyRevenue / currentGoal.target) * 100, 100);
@@ -1542,6 +1597,16 @@
         }
 
         function renderContracts() {
+            if (window.VXContractsPage?.render) {
+                window.VXContractsPage.render({
+                    contracts,
+                    clients,
+                    summary: contractSummary,
+                    pageInfo: contractsPage
+                });
+                return;
+            }
+
             const tbody = document.getElementById('contracts-table');
             if (!tbody) return;
 
@@ -1658,6 +1723,11 @@
         }
 
         function populateDeliveriesClientFilter() {
+            if (window.VXDeliveriesPage?.populateClientFilter) {
+                window.VXDeliveriesPage.populateClientFilter(clients);
+                return;
+            }
+
             const select = document.getElementById('deliveries-client-filter');
             if (!select) return;
 
@@ -1671,6 +1741,17 @@
         }
 
         function renderDeliveries() {
+            if (window.VXDeliveriesPage?.render) {
+                window.VXDeliveriesPage.render({
+                    deliveries,
+                    clients,
+                    summary: deliverySummary,
+                    pageInfo: deliveriesPage
+                });
+                setupDeliveryDragAndDrop();
+                return;
+            }
+
             const board = document.getElementById('deliveries-board');
             if (!board) return;
 
@@ -1871,6 +1952,11 @@
 
         // Client Performance functions
         function populateClientSelectById(selectId, selected = '') {
+            if (window.VXPerformancePage?.populateClientSelect) {
+                window.VXPerformancePage.populateClientSelect(clients, selectId, selected);
+                return;
+            }
+
             const select = document.getElementById(selectId);
             if (!select) return;
             select.innerHTML = '<option value="">Selecione</option>' + clients.map(c => `<option value="${safeText(c.id)}">${safeText(c.name)}</option>`).join('');
@@ -1944,6 +2030,14 @@
         }
 
         function renderClientPerformance() {
+            if (window.VXPerformancePage?.render) {
+                window.VXPerformancePage.render({
+                    clients,
+                    records: clientPerformance
+                });
+                return;
+            }
+
             populateClientSelectById('performance-client-filter', document.getElementById('performance-client-filter')?.value || '');
             const selectedClientId = document.getElementById('performance-client-filter')?.value || clients[0]?.id || '';
             if (selectedClientId) document.getElementById('performance-client-filter').value = selectedClientId;
@@ -2046,6 +2140,16 @@
         }
 
         function renderRealFinance() {
+            if (window.VXFinancePage?.render) {
+                window.VXFinancePage.render({
+                    financeEntries,
+                    clients,
+                    summary: financeSummary,
+                    pageInfo: financePage
+                });
+                return;
+            }
+
             const activeClients = clients.filter(c => c.phase === 'fechado');
             const recurringFromClients = activeClients.reduce((s,c)=>s+(parseFloat(c.value)||0),0);
             const recurringEntries = financeEntries.filter(e=>e.recurring==='sim' && e.type==='receita').reduce((s,e)=>s+(parseFloat(e.value)||0),0);
@@ -2209,6 +2313,17 @@
         }
 
         function renderCommissions() {
+            if (window.VXCommissionsPage?.renderCommissions) {
+                window.VXCommissionsPage.renderCommissions({
+                    teamMembers,
+                    commissionSales,
+                    metrics: commissionSalesMetrics,
+                    ranking: commissionRanking,
+                    pageInfo: commissionSalesPage
+                });
+                return;
+            }
+
             const membersList = document.getElementById('commission-members-list');
             const salesList = document.getElementById('commission-sales-list');
             if (!membersList || !salesList) return;
@@ -2331,6 +2446,15 @@
         }
 
         function renderRanking() {
+            if (window.VXCommissionsPage?.renderRanking) {
+                window.VXCommissionsPage.renderRanking({
+                    teamMembers,
+                    commissionSales,
+                    ranking: commissionRanking
+                });
+                return;
+            }
+
             const grid = document.getElementById('ranking-grid');
             if (!grid) return;
 
@@ -2734,6 +2858,18 @@
         }
 
         function renderTeam() {
+            if (window.VXTeamPage?.render) {
+                const selectedRole = document.getElementById('team-role-filter')?.value || '';
+                const visibleMembers = selectedRole ? teamMembers.filter(m => m.role === selectedRole) : teamMembers;
+                setTimeout(() => renderTeamCharts(visibleMembers, selectedRole), 60);
+                window.VXTeamPage.render({
+                    teamMembers,
+                    summary: teamSummary,
+                    pageInfo: teamPage
+                });
+                return;
+            }
+
             const total = teamMembers.length;
             const tasks = teamMembers.reduce((sum, m) => sum + getMemberTaskStats(m).assigned, 0);
             const completed = teamMembers.reduce((sum, m) => sum + getMemberTaskStats(m).completed, 0);
@@ -2892,6 +3028,26 @@
         }
 
 function renderExecutiveDashboard() {
+            if (window.VXExecutivePage?.render) {
+                window.VXExecutivePage.render({
+                    clients,
+                    events,
+                    contracts,
+                    financeEntries,
+                    clientPerformance,
+                    teamMembers,
+                    currentGoal,
+                    executiveSettings,
+                    helpers: {
+                        getClientValue,
+                        isClosedSale,
+                        getPhaseLabel,
+                        getMemberTaskStats
+                    }
+                });
+                return;
+            }
+
             const activeClients = clients.filter(c => c.phase === 'fechado');
             const totalRevenue = activeClients.reduce((sum, c) => sum + (parseFloat(c.value || 0) * parseInt(c.months || 1)), 0);
             const currentMonthRevenue = events.filter(e => typeof isClosedSale === 'function' ? isClosedSale(e) : e.sale === 'sim').reduce((sum, e) => sum + (parseFloat(e.revenue || 0) || 0), 0);
@@ -3269,6 +3425,11 @@ const profitableContainer = document.getElementById('exec-profitable-clients');
         }
 
         function renderAgencyGoals() {
+            if (window.VXGoalsPage?.renderAgencyGoals) {
+                window.VXGoalsPage.renderAgencyGoals({ clients, contracts, events, agencyGoals });
+                return;
+            }
+
             const grid = document.getElementById('agency-goals-grid');
             if (!grid) return;
 

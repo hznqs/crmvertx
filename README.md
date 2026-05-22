@@ -1,6 +1,6 @@
 # VertX Midia CRM
 
-CRM operacional da VertX Midia com frontend estático servido pelo Spring Boot e backend Java preparado para PostgreSQL via Supabase.
+CRM operacional da VertX Midia com frontend estático servido pelo Spring Boot e backend Java preparado para PostgreSQL via Supabase/Railway.
 
 ## Arquitetura
 
@@ -9,7 +9,8 @@ CRM operacional da VertX Midia com frontend estático servido pelo Spring Boot e
 - `src/main/resources/static/app.html`: tela principal do CRM.
 - `src/main/resources/static/assets/styles/crm.css`: estilos da interface.
 - `src/main/resources/static/assets/js/pages/login.js`: comportamento do login.
-- `src/main/resources/static/assets/js/pages/crm.js`: regras de interação da tela CRM.
+- `src/main/resources/static/assets/js/pages/crm.js`: orquestrador principal da tela CRM.
+- `src/main/resources/static/assets/js/pages/*.js`: módulos de UI por área, como dashboard, clientes, kanban, contratos, financeiro, agenda, equipe, metas, documentos, comissões, ranking, executivo, perfil, configurações e auditoria.
 - `src/main/resources/static/assets/js/core/api.js`: cliente HTTP para a API Java.
 - `src/main/resources/static/assets/js/core/auth.js`: sessão, token e logout.
 - `src/main/resources/static/assets/js/config/tailwind.config.js`: tema Tailwind da interface.
@@ -23,6 +24,7 @@ Leia também:
 
 - `docs/ARCHITECTURE.md`
 - `docs/SUPABASE.md`
+- `docs/QA_CHECKLIST.md`
 
 ## Configuração local
 
@@ -46,6 +48,8 @@ Healthcheck:
 curl http://localhost:8080/api/health
 ```
 
+O backend usa `server.port=${PORT:8080}`. Em Railway, a plataforma injeta `PORT`; localmente a porta padrão continua `8080`.
+
 Interface:
 
 ```text
@@ -65,31 +69,66 @@ Troque `ADMIN_PASSWORD` antes de usar em produção.
 
 - Nunca commite `.env`.
 - Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend.
-- Em produção, ative `APP_REQUIRE_AUTH=true` e configure o issuer JWT do Supabase.
-- Se o frontend acessar tabelas do Supabase diretamente, habilite RLS e use somente `SUPABASE_ANON_KEY`.
-- Se o acesso ao banco ficar apenas pelo Java, centralize autorização e validação no backend.
+- Em produção, configure `JWT_SECRET` forte e mantenha `APP_REQUIRE_AUTH=true`.
+- Configure `APP_ALLOWED_ORIGINS` com origens exatas ou padrões controlados, por exemplo `https://*.up.railway.app`.
+- Configure `APP_CSP_CONNECT_SRC` quando o frontend precisar chamar uma API em outro domínio.
+- O frontend não acessa buckets/tabelas do Supabase diretamente; uploads passam pela API Java.
+- Centralize autorização, validação e auditoria no backend.
 
 ## Endpoints iniciais
 
 - `GET /api/health`
 - `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/change-password`
 - `GET /api/auth/me`
+- `GET /api/dashboard/metrics`
+- `GET /api/dashboard/revenue-chart`
+- `GET /api/dashboard/meetings-chart`
 - CRUD protegido por JWT: `/api/clients`
+- Atualização de fase Kanban: `PATCH /api/clients/{id}/phase`
 - CRUD protegido por JWT: `/api/contracts`
 - CRUD protegido por JWT: `/api/deliveries`
+- Atualização de status de entrega: `PATCH /api/deliveries/{id}/status`
 - CRUD protegido por JWT: `/api/events`
 - CRUD protegido por JWT: `/api/finance-entries`
 - CRUD protegido por JWT: `/api/performance-records`
 - CRUD protegido por JWT: `/api/goals`
 - CRUD protegido por JWT: `/api/team-members`
+- Uploads backend-only: `/api/uploads`
+- Auditoria: `/api/audit`
+- Organização e configurações: `/api/organization`, `/api/settings`
+- Comissões/ranking: `/api/commission-sales`
 
-O frontend usa estes endpoints quando o backend está disponível e mantém fallback local para desenvolvimento.
+O frontend usa estes endpoints como fonte principal de dados. `localStorage` fica restrito a tokens JWT, refresh token e preferências visuais.
+
+## Deploy Railway
+
+Configure as variáveis no serviço:
+
+```env
+DATABASE_URL=postgresql://usuario:senha@host:5432/database?sslmode=require
+JWT_SECRET=troque-por-um-segredo-longo
+ADMIN_EMAIL=admin@empresa.com
+ADMIN_PASSWORD=SenhaForte123
+APP_ALLOWED_ORIGINS=https://*.up.railway.app
+APP_CSP_CONNECT_SRC=
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-apenas-backend
+SUPABASE_STORAGE_BUCKET=crm-documents
+DB_POOL_INITIALIZATION_FAIL_TIMEOUT=1
+```
+
+O `Dockerfile` gera o jar com Maven e o Railway executa a aplicação na porta injetada em `PORT`.
 
 ## Validação
 
 ```powershell
 .\scripts\check.ps1
 ```
+
+Esse comando valida todos os JavaScript, roda a suíte Maven e gera o package final.
 
 ## Correção de Flyway
 

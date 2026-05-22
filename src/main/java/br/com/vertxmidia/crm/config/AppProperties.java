@@ -16,6 +16,7 @@ public class AppProperties {
     public static class Security {
         private boolean requireAuth;
         private String allowedOrigins = "";
+        private String cspConnectSrc = "";
 
         public boolean isRequireAuth() {
             return requireAuth;
@@ -35,6 +36,30 @@ public class AppProperties {
 
         public List<String> allowedOriginList() {
             return Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(origin -> !origin.isBlank())
+                    .filter(origin -> !origin.contains("*"))
+                    .toList();
+        }
+
+        public List<String> allowedOriginPatternList() {
+            return Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(origin -> !origin.isBlank())
+                    .filter(origin -> origin.contains("*"))
+                    .toList();
+        }
+
+        public String getCspConnectSrc() {
+            return cspConnectSrc;
+        }
+
+        public void setCspConnectSrc(String cspConnectSrc) {
+            this.cspConnectSrc = cspConnectSrc;
+        }
+
+        public List<String> cspConnectSrcList() {
+            return Arrays.stream(cspConnectSrc.split(","))
                     .map(String::trim)
                     .filter(origin -> !origin.isBlank())
                     .toList();
