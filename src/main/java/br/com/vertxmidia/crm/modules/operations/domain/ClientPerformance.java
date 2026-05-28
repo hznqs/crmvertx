@@ -36,6 +36,12 @@ public class ClientPerformance extends TimestampedEntity implements OperationRes
     @DecimalMin("0.00")
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal investment = BigDecimal.ZERO;
+    @Column(nullable = false)
+    private boolean active = true;
+    @Column(name = "created_by")
+    private UUID createdBy;
+    @Column(name = "updated_by")
+    private UUID updatedBy;
 
     public UUID getId() { return id; }
     public UUID getClientId() { return clientId; }
@@ -50,4 +56,10 @@ public class ClientPerformance extends TimestampedEntity implements OperationRes
     public void setRevenue(BigDecimal revenue) { this.revenue = revenue; }
     public BigDecimal getInvestment() { return investment; }
     public void setInvestment(BigDecimal investment) { this.investment = investment; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public UUID getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
 }

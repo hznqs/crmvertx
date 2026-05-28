@@ -20,6 +20,14 @@ import org.hibernate.annotations.UuidGenerator;
 public class FinanceEntry extends TimestampedEntity implements OperationResource {
     @Id @GeneratedValue @UuidGenerator
     private UUID id;
+    @Column(name = "client_id")
+    private UUID clientId;
+    @Column(name = "contract_id")
+    private UUID contractId;
+    @Column(name = "project_id")
+    private UUID projectId;
+    @Column(name = "service_id")
+    private UUID serviceId;
     @NotBlank
     @Size(max = 40)
     @Column(nullable = false, length = 40)
@@ -42,8 +50,24 @@ public class FinanceEntry extends TimestampedEntity implements OperationResource
     private boolean recurring;
     @Column(name = "auto_billing", nullable = false)
     private boolean autoBilling;
+    @Column(name = "cost_center", nullable = false, length = 40)
+    private String costCenter = "operacional";
+    @Column(nullable = false)
+    private boolean active = true;
+    @Column(name = "created_by")
+    private UUID createdBy;
+    @Column(name = "updated_by")
+    private UUID updatedBy;
 
     public UUID getId() { return id; }
+    public UUID getClientId() { return clientId; }
+    public void setClientId(UUID clientId) { this.clientId = clientId; }
+    public UUID getContractId() { return contractId; }
+    public void setContractId(UUID contractId) { this.contractId = contractId; }
+    public UUID getProjectId() { return projectId; }
+    public void setProjectId(UUID projectId) { this.projectId = projectId; }
+    public UUID getServiceId() { return serviceId; }
+    public void setServiceId(UUID serviceId) { this.serviceId = serviceId; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public String getStatus() { return status; }
@@ -58,4 +82,12 @@ public class FinanceEntry extends TimestampedEntity implements OperationResource
     public void setRecurring(boolean recurring) { this.recurring = recurring; }
     public boolean isAutoBilling() { return autoBilling; }
     public void setAutoBilling(boolean autoBilling) { this.autoBilling = autoBilling; }
+    public String getCostCenter() { return costCenter; }
+    public void setCostCenter(String costCenter) { this.costCenter = costCenter; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public UUID getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
 }

@@ -10,12 +10,15 @@ import java.util.UUID;
 public record CrmEventResponse(
         UUID id,
         UUID clientId,
+        String type,
         String title,
         LocalDate date,
         LocalTime time,
         String status,
         boolean sale,
         BigDecimal revenue,
+        String notes,
+        boolean active,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -23,12 +26,15 @@ public record CrmEventResponse(
         return new CrmEventResponse(
                 event.getId(),
                 event.getClientId(),
+                event.getType(),
                 event.getTitle(),
                 event.getDate(),
                 event.getTime(),
                 event.getStatus(),
                 event.isSale(),
                 event.getRevenue(),
+                event.getNotes(),
+                event.isActive(),
                 event.getCreatedAt(),
                 event.getUpdatedAt()
         );

@@ -1,9 +1,16 @@
 server:
   port: ${PORT:8080}
+  shutdown: graceful
+  compression:
+    enabled: ${SERVER_COMPRESSION_ENABLED:true}
+    mime-types: application/json,application/problem+json,text/plain,text/css,application/javascript,text/javascript,text/event-stream
+    min-response-size: 1024
 
 spring:
   application:
     name: vertx-crm
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   config:
     import: optional:file:.env[.properties]
   datasource:
@@ -20,9 +27,37 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        default_batch_fetch_size: 50
+        query:
+          fail_on_pagination_over_collection_fetch: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when_authorized}
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  pattern:
+    level: "%5p [cid:%X{correlationId:-none}]"
 
 app:
   security:
     require-auth: ${APP_REQUIRE_AUTH:false}
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173}
     csp-connect-src: ${APP_CSP_CONNECT_SRC:}
+  performance:
+    dashboard-cache-ttl-ms: ${APP_DASHBOARD_CACHE_TTL_MS:60000}

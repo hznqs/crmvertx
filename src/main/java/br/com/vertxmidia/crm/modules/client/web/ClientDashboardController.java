@@ -24,13 +24,13 @@ public class ClientDashboardController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'CLIENTS')")
     ClientDashboardResponse findByClient(@PathVariable UUID clientId) {
         return service.findByClientId(clientId);
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'CLIENTS')")
     ClientDashboardResponse save(@PathVariable UUID clientId, @Valid @RequestBody ClientDashboardRequest request) {
         return service.save(clientId, request);
     }

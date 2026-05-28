@@ -1,21 +1,16 @@
 # VertX Midia CRM
 
-CRM operacional da VertX Midia com frontend estático servido pelo Spring Boot e backend Java preparado para PostgreSQL via Supabase/Railway.
+CRM operacional da VertX Midia com backend Java/Spring Boot e frontend Next.js/Tailwind, preparado para PostgreSQL/Supabase, Docker e deploy em produção sem multitenancy.
 
 ## Arquitetura
 
-- `src/main/resources/static/index.html`: redirecionador de sessão.
-- `src/main/resources/static/login.html`: tela de login.
-- `src/main/resources/static/app.html`: tela principal do CRM.
-- `src/main/resources/static/assets/styles/crm.css`: estilos da interface.
-- `src/main/resources/static/assets/js/pages/login.js`: comportamento do login.
-- `src/main/resources/static/assets/js/pages/crm.js`: orquestrador principal da tela CRM.
-- `src/main/resources/static/assets/js/pages/*.js`: módulos de UI por área, como dashboard, clientes, kanban, contratos, financeiro, agenda, equipe, metas, documentos, comissões, ranking, executivo, perfil, configurações e auditoria.
-- `src/main/resources/static/assets/js/core/api.js`: cliente HTTP para a API Java.
-- `src/main/resources/static/assets/js/core/auth.js`: sessão, token e logout.
-- `src/main/resources/static/assets/js/config/tailwind.config.js`: tema Tailwind da interface.
-- `src/main/java`: API Java com Spring Boot.
+- `frontend`: interface Next.js App Router com Tailwind CSS.
+- Design system do frontend: primitives em `frontend/components/ui`, command palette, toasts, TanStack Query, Zustand, TanStack Table e Recharts.
+- `src/main/java`: API Java com Spring Boot 3, Security, JWT, JPA e módulos de domínio.
 - `src/main/resources/db/migration`: migrations Flyway versionadas.
+- `docker-compose.yml`: ambiente local completo com PostgreSQL, backend e frontend.
+- `Dockerfile`: imagem de produção do backend.
+- `frontend/Dockerfile`: imagem de produção do frontend Next.js.
 - Supabase entra como PostgreSQL gerenciado, storage e autenticação quando necessário.
 - A regra de negócio deve ficar no Java, não em funções, triggers ou policies complexas no Supabase.
 - O CRM está organizado em módulos operacionais separados, com auditoria e APIs protegidas por login.
@@ -25,12 +20,13 @@ Leia também:
 - `docs/ARCHITECTURE.md`
 - `docs/SUPABASE.md`
 - `docs/QA_CHECKLIST.md`
+- `docs/DEPLOYMENT.md`
 
 ## Configuração local
 
 1. Edite `.env` com as credenciais reais do Supabase.
 2. Use a `DATABASE_URL` do Supabase com `sslmode=require`.
-3. Rode a aplicação:
+3. Rode o backend:
 
 ```bash
 mvn spring-boot:run
@@ -53,7 +49,15 @@ O backend usa `server.port=${PORT:8080}`. Em Railway, a plataforma injeta `PORT`
 Interface:
 
 ```text
-http://localhost:8080
+http://localhost:3000
+```
+
+Frontend local:
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 Login inicial:
@@ -74,10 +78,33 @@ Troque `ADMIN_PASSWORD` antes de usar em produção.
 - Configure `APP_CSP_CONNECT_SRC` quando o frontend precisar chamar uma API em outro domínio.
 - O frontend não acessa buckets/tabelas do Supabase diretamente; uploads passam pela API Java.
 - Centralize autorização, validação e auditoria no backend.
+- Requests recebem `X-Correlation-Id` para rastreabilidade em logs e respostas.
+
+## Observabilidade
+
+Endpoints públicos de saúde:
+
+```bash
+curl http://localhost:8080/api/health
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/health/readiness
+curl http://localhost:8080/actuator/health/liveness
+```
+
+Endpoints protegidos por JWT com role `ADMIN` ou `GESTOR`:
+
+```text
+GET /actuator/metrics
+GET /actuator/metrics/{metricName}
+```
+
+Os logs incluem `correlationId` quando o cliente envia `X-Correlation-Id`; se o cabeçalho não vier, o backend gera um UUID.
 
 ## Endpoints iniciais
 
 - `GET /api/health`
+- `GET /actuator/health`
+- `GET /actuator/metrics` protegido por role privilegiada
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
@@ -101,7 +128,7 @@ Troque `ADMIN_PASSWORD` antes de usar em produção.
 - Organização e configurações: `/api/organization`, `/api/settings`
 - Comissões/ranking: `/api/commission-sales`
 
-O frontend usa estes endpoints como fonte principal de dados. `localStorage` fica restrito a tokens JWT, refresh token e preferências visuais.
+O frontend usa estes endpoints como fonte principal de dados. Tokens JWT e refresh token ficam em cookies `HttpOnly`, com renovação feita pelo proxy do Next.js; `localStorage` não deve armazenar dados sensíveis ou regras críticas.
 
 ## Deploy Railway
 
@@ -122,13 +149,40 @@ DB_POOL_INITIALIZATION_FAIL_TIMEOUT=1
 
 O `Dockerfile` gera o jar com Maven e o Railway executa a aplicação na porta injetada em `PORT`.
 
+## Docker Compose local
+
+```bash
+docker compose up --build
+```
+
+Serviços:
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8080`
+- PostgreSQL: `localhost:5432`
+
+O compose usa credenciais locais de desenvolvimento. Para produção, configure variáveis reais no provedor e não reaproveite senhas do exemplo.
+
 ## Validação
 
 ```powershell
 .\scripts\check.ps1
 ```
 
-Esse comando valida todos os JavaScript, roda a suíte Maven e gera o package final.
+Esse comando valida o frontend Next.js, roda a suíte Maven e gera o package final.
+
+Validação da stack atual:
+
+```bash
+mvn "-Dmaven.resources.skip=true" test
+cd frontend
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+```
+
+O CI oficial fica em `.github/workflows/ci.yml` e executa backend, frontend, auditoria npm e build das imagens Docker.
 
 ## Correção de Flyway
 

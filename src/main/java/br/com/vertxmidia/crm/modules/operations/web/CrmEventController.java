@@ -35,7 +35,7 @@ public class CrmEventController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'AGENDA')")
     Page<CrmEventResponse> search(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID clientId,
@@ -47,26 +47,26 @@ public class CrmEventController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'AGENDA')")
     CrmEventResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'AGENDA')")
     ResponseEntity<CrmEventResponse> create(@Valid @RequestBody CrmEventRequest request) {
         CrmEventResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/events/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'AGENDA')")
     CrmEventResponse update(@PathVariable UUID id, @Valid @RequestBody CrmEventRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'AGENDA')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: vertx-crm-postgres
+    environment:
+      POSTGRES_DB: vertxcrm
+      POSTGRES_USER: vertxcrm
+      POSTGRES_PASSWORD: vertxcrm_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vertxcrm -d vertxcrm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: vertx-crm-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+    container_name: vertx-crm-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DATABASE_URL: jdbc:postgresql://postgres:5432/vertxcrm
+      JWT_SECRET: change-this-local-secret-with-at-least-32-chars
+      ADMIN_EMAIL: admin@vertxmidia.local
+      ADMIN_PASSWORD: ChangeMe123!
+      APP_REQUIRE_AUTH: "true"
+      APP_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8080
+      APP_CSP_CONNECT_SRC: http://localhost:3000
+      REDIS_URL: redis://redis:6379
+      MANAGEMENT_HEALTH_SHOW_DETAILS: when_authorized
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: vertx-crm-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_APP_NAME: Vertxmidia CRM
+      CRM_API_BASE_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  uploads_data:
+  redis_data:

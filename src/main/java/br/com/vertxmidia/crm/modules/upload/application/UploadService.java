@@ -12,10 +12,16 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.env.Environment;
@@ -36,6 +42,7 @@ public class UploadService {
             "image/png",
             "image/jpeg",
             "image/webp",
+            "image/svg+xml",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
     private static final Map<String, Set<String>> ALLOWED_EXTENSIONS = Map.of(
@@ -43,8 +50,26 @@ public class UploadService {
             "image/png", Set.of("png"),
             "image/jpeg", Set.of("jpg", "jpeg"),
             "image/webp", Set.of("webp"),
+            "image/svg+xml", Set.of("svg"),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Set.of("docx")
     );
+    private static final Set<String> FORBIDDEN_SVG_TOKENS = Set.of(
+            "<script",
+            "javascript:",
+            "data:",
+            " onload=",
+            " onclick=",
+            " onerror=",
+            " onmouseover=",
+            " onfocus=",
+            " onbegin=",
+            "onactivate=",
+            "<foreignobject",
+            "<iframe",
+            "<object",
+            "<embed"
+    );
+    private static final String LOCAL_BUCKET = "local";
 
     private final UploadedDocumentRepository repository;
     private final AuditService auditService;
@@ -61,26 +86,34 @@ public class UploadService {
     public UploadedDocumentResponse upload(MultipartFile file, Jwt jwt, String entityType, UUID entityId) {
         validate(file);
 
-        String supabaseUrl = required("SUPABASE_URL");
-        String serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
-        String bucket = environment.getProperty("SUPABASE_STORAGE_BUCKET", "crm-documents");
+        StorageTarget target = storageTarget();
         String originalFilename = sanitizeFilename(file.getOriginalFilename());
         String storagePath = LocalDate.now() + "/" + UUID.randomUUID() + "-" + originalFilename;
 
-        putObject(supabaseUrl, serviceRoleKey, bucket, storagePath, file);
+        if (target.local()) {
+            putLocalObject(storagePath, file);
+        } else {
+            putObject(target.supabaseUrl(), target.serviceRoleKey(), target.bucket(), storagePath, file);
+        }
 
         UploadedDocument document = new UploadedDocument();
         document.setOriginalFilename(originalFilename);
-        document.setStorageBucket(bucket);
+        document.setStorageBucket(target.bucket());
         document.setStoragePath(storagePath);
-        document.setPublicUrl(publicUrl(supabaseUrl, bucket, storagePath));
-        document.setContentType(file.getContentType());
+        if (!target.local()) {
+            document.setPublicUrl(publicUrl(target.supabaseUrl(), target.bucket(), storagePath));
+        }
+        document.setContentType(detectContentType(file).orElse(file.getContentType()));
         document.setSizeBytes(file.getSize());
         document.setUploadedBy(UUID.fromString(jwt.getSubject()));
         document.setEntityType(normalizeEntityType(entityType));
         document.setEntityId(entityId);
 
         UploadedDocument saved = repository.save(document);
+        if (target.local() && isPublicImage(saved)) {
+            saved.setPublicUrl("/api/uploads/" + saved.getId() + "/public");
+            saved = repository.save(saved);
+        }
         auditService.log("UPLOAD", "Documento", saved.getId());
         return UploadedDocumentResponse.from(saved);
     }
@@ -100,9 +133,13 @@ public class UploadService {
                 .filter(item -> item.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Documento nao encontrado"));
 
-        String supabaseUrl = required("SUPABASE_URL");
-        String serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
-        deleteObject(supabaseUrl, serviceRoleKey, document.getStorageBucket(), document.getStoragePath());
+        if (isLocal(document)) {
+            deleteLocalObject(document.getStoragePath());
+        } else {
+            String supabaseUrl = required("SUPABASE_URL");
+            String serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
+            deleteObject(supabaseUrl, serviceRoleKey, document.getStorageBucket(), document.getStoragePath());
+        }
 
         document.setDeletedAt(Instant.now());
         repository.save(document);
@@ -115,10 +152,51 @@ public class UploadService {
                 .filter(item -> item.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Documento nao encontrado"));
 
-        String supabaseUrl = required("SUPABASE_URL");
-        String serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
-        byte[] content = getObject(supabaseUrl, serviceRoleKey, document.getStorageBucket(), document.getStoragePath());
+        byte[] content = isLocal(document)
+                ? getLocalObject(document.getStoragePath())
+                : getObject(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"), document.getStorageBucket(), document.getStoragePath());
         return new DownloadedDocument(document.getOriginalFilename(), document.getContentType(), content);
+    }
+
+    @Transactional(readOnly = true)
+    public DownloadedDocument publicImage(UUID id) {
+        UploadedDocument document = repository.findById(id)
+                .filter(item -> item.getDeletedAt() == null)
+                .filter(this::isPublicImage)
+                .orElseThrow(() -> new EntityNotFoundException("Imagem nao encontrada"));
+
+        byte[] content = isLocal(document)
+                ? getLocalObject(document.getStoragePath())
+                : getObject(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"), document.getStorageBucket(), document.getStoragePath());
+        return new DownloadedDocument(document.getOriginalFilename(), document.getContentType(), content);
+    }
+
+    private void putLocalObject(String storagePath, MultipartFile file) {
+        try {
+            Path target = resolveLocalPath(storagePath);
+            Files.createDirectories(target.getParent());
+            try (var input = file.getInputStream()) {
+                Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Nao foi possivel salvar arquivo localmente.", ex);
+        }
+    }
+
+    private void deleteLocalObject(String storagePath) {
+        try {
+            Files.deleteIfExists(resolveLocalPath(storagePath));
+        } catch (IOException ex) {
+            throw new IllegalStateException("Nao foi possivel excluir arquivo local.", ex);
+        }
+    }
+
+    private byte[] getLocalObject(String storagePath) {
+        try {
+            return Files.readAllBytes(resolveLocalPath(storagePath));
+        } catch (IOException ex) {
+            throw new IllegalStateException("Nao foi possivel ler arquivo local.", ex);
+        }
     }
 
     private void putObject(String supabaseUrl, String serviceRoleKey, String bucket, String storagePath, MultipartFile file) {
@@ -194,14 +272,76 @@ public class UploadService {
         if (file.getSize() > MAX_UPLOAD_SIZE) {
             throw new IllegalArgumentException("Arquivo excede o limite de 15MB");
         }
-        if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
+
+        String declaredContentType = normalizeContentType(file.getContentType());
+        if (!ALLOWED_CONTENT_TYPES.contains(declaredContentType)) {
             throw new IllegalArgumentException("Tipo de arquivo nao permitido");
         }
+
+        String detectedContentType = detectContentType(file)
+                .orElseThrow(() -> new IllegalArgumentException("Nao foi possivel validar o conteudo real do arquivo"));
+        if (!declaredContentType.equals(detectedContentType)) {
+            throw new IllegalArgumentException("Tipo real do arquivo nao corresponde ao tipo informado");
+        }
+
         String extension = extensionOf(file.getOriginalFilename());
-        Set<String> allowedExtensions = ALLOWED_EXTENSIONS.get(file.getContentType());
+        Set<String> allowedExtensions = ALLOWED_EXTENSIONS.get(detectedContentType);
         if (extension.isBlank() || allowedExtensions == null || !allowedExtensions.contains(extension)) {
             throw new IllegalArgumentException("Extensao do arquivo nao corresponde ao tipo permitido");
         }
+    }
+
+    private Optional<String> detectContentType(MultipartFile file) {
+        try {
+            byte[] bytes = file.getBytes();
+            if (startsWith(bytes, new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D })) {
+                return Optional.of("application/pdf");
+            }
+            if (startsWith(bytes, new byte[] { (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })) {
+                return Optional.of("image/png");
+            }
+            if (bytes.length >= 3 && bytes[0] == (byte) 0xFF && bytes[1] == (byte) 0xD8 && bytes[2] == (byte) 0xFF) {
+                return Optional.of("image/jpeg");
+            }
+            if (isWebp(bytes)) {
+                return Optional.of("image/webp");
+            }
+            if (startsWith(bytes, new byte[] { 0x50, 0x4B, 0x03, 0x04 })) {
+                return Optional.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            }
+            if (isSafeSvg(bytes)) {
+                return Optional.of("image/svg+xml");
+            }
+            return Optional.empty();
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Nao foi possivel ler o arquivo enviado");
+        }
+    }
+
+    private boolean startsWith(byte[] bytes, byte[] signature) {
+        return bytes.length >= signature.length
+                && Arrays.equals(Arrays.copyOf(bytes, signature.length), signature);
+    }
+
+    private boolean isWebp(byte[] bytes) {
+        return bytes.length >= 12
+                && new String(bytes, 0, 4, StandardCharsets.US_ASCII).equals("RIFF")
+                && new String(bytes, 8, 4, StandardCharsets.US_ASCII).equals("WEBP");
+    }
+
+    private boolean isSafeSvg(byte[] bytes) {
+        String content = new String(bytes, StandardCharsets.UTF_8).trim().toLowerCase();
+        if (!(content.startsWith("<svg") || content.startsWith("<?xml")) || !content.contains("<svg")) {
+            return false;
+        }
+        return FORBIDDEN_SVG_TOKENS.stream().noneMatch(content::contains);
+    }
+
+    private String normalizeContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return "";
+        }
+        return contentType.split(";")[0].trim().toLowerCase();
     }
 
     private String required(String property) {
@@ -210,6 +350,38 @@ public class UploadService {
             throw new IllegalStateException(property + " nao configurado no backend");
         }
         return value.trim();
+    }
+
+    private StorageTarget storageTarget() {
+        String supabaseUrl = environment.getProperty("SUPABASE_URL", "");
+        String serviceRoleKey = environment.getProperty("SUPABASE_SERVICE_ROLE_KEY", "");
+        if (hasText(supabaseUrl) && hasText(serviceRoleKey)) {
+            return new StorageTarget(false, supabaseUrl.trim(), serviceRoleKey.trim(), environment.getProperty("SUPABASE_STORAGE_BUCKET", "crm-documents"));
+        }
+        return new StorageTarget(true, null, null, LOCAL_BUCKET);
+    }
+
+    private Path resolveLocalPath(String storagePath) {
+        Path root = Paths.get(environment.getProperty("APP_UPLOAD_LOCAL_DIR", "uploads")).toAbsolutePath().normalize();
+        Path target = root.resolve(storagePath).normalize();
+        if (!target.startsWith(root)) {
+            throw new IllegalArgumentException("Caminho de arquivo invalido");
+        }
+        return target;
+    }
+
+    private boolean isLocal(UploadedDocument document) {
+        return LOCAL_BUCKET.equals(document.getStorageBucket());
+    }
+
+    private boolean isPublicImage(UploadedDocument document) {
+        return document.getContentType() != null
+                && document.getContentType().startsWith("image/")
+                && Set.of("profile", "logo", "organization", "settings").contains(String.valueOf(document.getEntityType()));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String sanitizeFilename(String filename) {
@@ -249,5 +421,8 @@ public class UploadService {
 
     private String encodePath(String path) {
         return URLEncoder.encode(path, StandardCharsets.UTF_8).replace("+", "%20").replace("%2F", "/");
+    }
+
+    private record StorageTarget(boolean local, String supabaseUrl, String serviceRoleKey, String bucket) {
     }
 }

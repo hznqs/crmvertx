@@ -27,7 +27,7 @@ public class DashboardController {
     }
 
     @GetMapping("/metrics")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
     DashboardMetricsResponse metrics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -36,7 +36,7 @@ public class DashboardController {
     }
 
     @GetMapping("/revenue-chart")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
     List<RevenueChartPoint> revenueChart(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -45,7 +45,7 @@ public class DashboardController {
     }
 
     @GetMapping("/meetings-chart")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
     List<MeetingsSalesChartPoint> meetingsChart(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to

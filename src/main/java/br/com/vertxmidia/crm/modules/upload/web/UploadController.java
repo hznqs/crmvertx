@@ -36,7 +36,7 @@ public class UploadController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'UPLOADS')")
     Page<UploadedDocumentResponse> list(
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) UUID entityId,
@@ -47,7 +47,7 @@ public class UploadController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'UPLOADS')")
     UploadedDocumentResponse upload(
             @RequestPart("file") MultipartFile file,
             @RequestParam(required = false) String entityType,
@@ -58,22 +58,37 @@ public class UploadController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'UPLOADS')")
     void delete(@PathVariable UUID id) {
         service.delete(id);
     }
 
     @GetMapping("/{id}/download")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','OPERACIONAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'UPLOADS')")
     ResponseEntity<byte[]> download(@PathVariable UUID id) {
         DownloadedDocument document = service.download(id);
+        return fileResponse(document, true);
+    }
+
+    @GetMapping("/{id}/public")
+    @PreAuthorize("permitAll()")
+    ResponseEntity<byte[]> publicImage(@PathVariable UUID id) {
+        DownloadedDocument document = service.publicImage(id);
+        return fileResponse(document, false);
+    }
+
+    private ResponseEntity<byte[]> fileResponse(DownloadedDocument document, boolean attachment) {
         MediaType mediaType = document.contentType() == null || document.contentType().isBlank()
                 ? MediaType.APPLICATION_OCTET_STREAM
                 : MediaType.parseMediaType(document.contentType());
 
+        ContentDisposition.Builder disposition = attachment
+                ? ContentDisposition.attachment()
+                : ContentDisposition.inline();
+
         return ResponseEntity.ok()
                 .contentType(mediaType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition
                         .filename(document.filename(), java.nio.charset.StandardCharsets.UTF_8)
                         .build()
                         .toString())

@@ -9,7 +9,13 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSpecificationExecutor<Contract> {
     long countByStatus(String status);
 
+    long countByStatusAndActiveTrue(String status);
+
     long countByStatusAndEndDateBetween(String status, LocalDate start, LocalDate end);
 
+    long countByStatusAndEndDateBetweenAndActiveTrue(String status, LocalDate start, LocalDate end);
+
     long countByAutoRenewTrue();
+
+    long countByAutoRenewTrueAndActiveTrue();
 }

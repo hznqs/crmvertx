@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -22,6 +23,14 @@ public class CommissionSale extends TimestampedEntity {
 
     @Column(name = "member_id", nullable = false)
     private UUID memberId;
+    @Column(nullable = false, length = 40)
+    private String type = "VENDA";
+    @Column(nullable = false, length = 40)
+    private String status = "PENDENTE";
+    @Column(name = "contract_id")
+    private UUID contractId;
+    @Column(name = "finance_entry_id")
+    private UUID financeEntryId;
 
     @Column(length = 180)
     private String client;
@@ -37,10 +46,22 @@ public class CommissionSale extends TimestampedEntity {
     @Min(0)
     @Column(nullable = false)
     private int goal;
+    @Column(name = "paid_at")
+    private Instant paidAt;
+    @Column(nullable = false)
+    private boolean active = true;
 
     public UUID getId() { return id; }
     public UUID getMemberId() { return memberId; }
     public void setMemberId(UUID memberId) { this.memberId = memberId; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public UUID getContractId() { return contractId; }
+    public void setContractId(UUID contractId) { this.contractId = contractId; }
+    public UUID getFinanceEntryId() { return financeEntryId; }
+    public void setFinanceEntryId(UUID financeEntryId) { this.financeEntryId = financeEntryId; }
     public String getClient() { return client; }
     public void setClient(String client) { this.client = client; }
     public BigDecimal getValue() { return value; }
@@ -49,4 +70,8 @@ public class CommissionSale extends TimestampedEntity {
     public void setPercent(BigDecimal percent) { this.percent = percent; }
     public int getGoal() { return goal; }
     public void setGoal(int goal) { this.goal = goal; }
+    public Instant getPaidAt() { return paidAt; }
+    public void setPaidAt(Instant paidAt) { this.paidAt = paidAt; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 }

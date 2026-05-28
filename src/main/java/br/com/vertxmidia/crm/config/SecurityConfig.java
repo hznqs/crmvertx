@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -42,9 +43,9 @@ public class SecurityConfig {
         http.headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                         "default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; " +
-                        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
-                        "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; " +
+                        "script-src 'none'; " +
+                        "style-src 'none'; " +
+                        "font-src 'none'; " +
                         "img-src 'self' data: blob: https:; " +
                         "connect-src " + connectSrc(appProperties) + "; " +
                         "object-src 'none'; " +
@@ -57,12 +58,15 @@ public class SecurityConfig {
         );
 
         http.authorizeHttpRequests(auth -> {
-            auth.requestMatchers("/", "/index.html", "/login.html", "/app.html", "/assets/**", "/favicon.ico").permitAll();
+            auth.requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll();
             auth.requestMatchers("/api/health").permitAll();
+            auth.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
+            auth.requestMatchers("/actuator/**").hasAnyRole("ADMIN", "GESTOR");
             auth.requestMatchers("/api/auth/login").permitAll();
             auth.requestMatchers("/api/auth/refresh").permitAll();
+            auth.requestMatchers("/api/uploads/*/public").permitAll();
             auth.requestMatchers("/api/**").authenticated();
-            auth.anyRequest().permitAll();
+            auth.anyRequest().denyAll();
         });
 
         http.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
@@ -76,7 +80,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(appProperties.getSecurity().allowedOriginList());
         configuration.setAllowedOriginPatterns(appProperties.getSecurity().allowedOriginPatternList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-Id"));
+        configuration.setExposedHeaders(List.of("X-Correlation-Id"));
         configuration.setMaxAge(3600L);
         configuration.setAllowCredentials(false);
 

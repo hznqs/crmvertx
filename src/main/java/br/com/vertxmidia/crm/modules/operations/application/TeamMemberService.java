@@ -7,6 +7,7 @@ import br.com.vertxmidia.crm.modules.operations.dto.TeamMemberResponse;
 import br.com.vertxmidia.crm.modules.operations.dto.TeamSummaryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.TeamMemberRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +30,8 @@ public class TeamMemberService {
     public Page<TeamMemberResponse> search(String role, String search, Pageable pageable) {
         Specification<TeamMember> spec = Specification
                 .where(OperationSpecifications.<TeamMember>equalsText("role", role))
-                .and(OperationSpecifications.textLike("name", search));
+                .and(OperationSpecifications.textLike("name", search))
+                .and((root, query, cb) -> cb.isTrue(root.get("active")));
         return repository.findAll(spec, pageable).map(TeamMemberResponse::from);
     }
 
@@ -50,11 +52,11 @@ public class TeamMemberService {
                 tasks,
                 completed,
                 productivity,
-                repository.countByRole("marketing"),
-                repository.countByRole("trafego"),
-                repository.countByRole("sdr"),
-                repository.countByRole("closer"),
-                repository.countByRole("dev")
+                repository.countByRoleAndActiveTrue("marketing"),
+                repository.countByRoleAndActiveTrue("trafego"),
+                repository.countByRoleAndActiveTrue("sdr"),
+                repository.countByRoleAndActiveTrue("closer"),
+                repository.countByRoleAndActiveTrue("dev")
         );
     }
 
@@ -79,35 +81,52 @@ public class TeamMemberService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Membro da equipe nao encontrado");
-        }
-        repository.deleteById(id);
-        auditService.log("DELETE", "Membro da equipe", id);
+        TeamMember member = get(id);
+        member.setActive(false);
+        repository.save(member);
+        auditService.log("SOFT_DELETE", "Membro da equipe", id);
     }
 
     private TeamMember get(UUID id) {
         return repository.findById(id)
+                .filter(TeamMember::isActive)
                 .orElseThrow(() -> new EntityNotFoundException("Membro da equipe nao encontrado"));
     }
 
     private void apply(TeamMemberRequest request, TeamMember member) {
+        member.setUserId(request.userId());
         member.setName(request.name().trim());
         member.setRole(request.role().trim());
+        member.setEmail(blankToNull(request.email()));
+        member.setPhone(blankToNull(request.phone()));
         member.setTasks(request.tasks() == null ? 0 : request.tasks());
         member.setCompleted(request.completed() == null ? 0 : request.completed());
         member.setPerformance(request.performance() == null ? 0 : request.performance());
         member.setNotes(request.notes() == null ? null : request.notes().trim());
         member.setTaskBreakdown(request.taskBreakdown() == null ? null : request.taskBreakdown().trim());
+        member.setHourlyCost(request.hourlyCost() == null ? BigDecimal.ZERO : request.hourlyCost());
+        member.setCapacityHoursMonth(request.capacityHoursMonth() == null ? 160 : request.capacityHoursMonth());
+        if (request.active() != null) {
+            member.setActive(request.active());
+        }
     }
 
     private void auditTeamMemberChanges(TeamMember member, TeamMemberRequest request) {
+        auditService.logChange("Membro da equipe", member.getId(), "userId", member.getUserId(), request.userId());
         auditService.logChange("Membro da equipe", member.getId(), "name", member.getName(), request.name().trim());
         auditService.logChange("Membro da equipe", member.getId(), "role", member.getRole(), request.role().trim());
+        auditService.logChange("Membro da equipe", member.getId(), "email", member.getEmail(), blankToNull(request.email()));
+        auditService.logChange("Membro da equipe", member.getId(), "phone", member.getPhone(), blankToNull(request.phone()));
         auditService.logChange("Membro da equipe", member.getId(), "tasks", member.getTasks(), request.tasks() == null ? 0 : request.tasks());
         auditService.logChange("Membro da equipe", member.getId(), "completed", member.getCompleted(), request.completed() == null ? 0 : request.completed());
         auditService.logChange("Membro da equipe", member.getId(), "performance", member.getPerformance(), request.performance() == null ? 0 : request.performance());
         auditService.logChange("Membro da equipe", member.getId(), "notes", member.getNotes(), request.notes() == null ? null : request.notes().trim());
         auditService.logChange("Membro da equipe", member.getId(), "taskBreakdown", member.getTaskBreakdown(), request.taskBreakdown() == null ? null : request.taskBreakdown().trim());
+        auditService.logChange("Membro da equipe", member.getId(), "hourlyCost", member.getHourlyCost(), request.hourlyCost() == null ? BigDecimal.ZERO : request.hourlyCost());
+        auditService.logChange("Membro da equipe", member.getId(), "capacityHoursMonth", member.getCapacityHoursMonth(), request.capacityHoursMonth() == null ? 160 : request.capacityHoursMonth());
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

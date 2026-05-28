@@ -1,5 +1,7 @@
 package br.com.vertxmidia.crm.modules.audit.application;
 
+import br.com.vertxmidia.crm.common.realtime.RealtimeEvent;
+import br.com.vertxmidia.crm.common.realtime.RealtimeEventHub;
 import br.com.vertxmidia.crm.modules.audit.domain.AuditLog;
 import br.com.vertxmidia.crm.modules.audit.infrastructure.AuditLogRepository;
 import java.time.Instant;
@@ -19,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class AuditServiceTest {
 
@@ -33,7 +36,10 @@ class AuditServiceTest {
         UUID userId = UUID.randomUUID();
         UUID entityId = UUID.randomUUID();
         AuditLogRepository repository = mock(AuditLogRepository.class);
-        AuditService service = new AuditService(repository);
+        RealtimeEventHub eventHub = mock(RealtimeEventHub.class);
+        when(repository.save(org.mockito.ArgumentMatchers.any(AuditLog.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        AuditService service = new AuditService(repository, eventHub);
 
         authenticate(userId);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -51,12 +57,21 @@ class AuditServiceTest {
         assertThat(log.getEntity()).isEqualTo("Cliente");
         assertThat(log.getEntityId()).isEqualTo(entityId);
         assertThat(log.getIpAddress()).isEqualTo("203.0.113.9");
+
+        ArgumentCaptor<RealtimeEvent> eventCaptor = ArgumentCaptor.forClass(RealtimeEvent.class);
+        verify(eventHub).publish(eventCaptor.capture());
+        RealtimeEvent event = eventCaptor.getValue();
+        assertThat(event.type()).isEqualTo("activity.create");
+        assertThat(event.channel()).isEqualTo("activity");
+        assertThat(event.userId()).isEqualTo(userId);
+        assertThat(event.entity()).isEqualTo("Cliente");
+        assertThat(event.entityId()).isEqualTo(entityId);
     }
 
     @Test
     void logChangeIgnoresEquivalentValues() {
         AuditLogRepository repository = mock(AuditLogRepository.class);
-        AuditService service = new AuditService(repository);
+        AuditService service = new AuditService(repository, mock(RealtimeEventHub.class));
 
         service.logChange("Cliente", UUID.randomUUID(), "name", "VertX", "VertX");
 
@@ -66,7 +81,10 @@ class AuditServiceTest {
     @Test
     void logAuthenticationSanitizesEmailMetadata() {
         AuditLogRepository repository = mock(AuditLogRepository.class);
-        AuditService service = new AuditService(repository);
+        RealtimeEventHub eventHub = mock(RealtimeEventHub.class);
+        when(repository.save(org.mockito.ArgumentMatchers.any(AuditLog.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        AuditService service = new AuditService(repository, eventHub);
         UUID userId = UUID.randomUUID();
 
         service.logAuthentication("LOGIN_FAILURE", userId, "admin@example.com\r\nX-Injected: true");
@@ -78,6 +96,10 @@ class AuditServiceTest {
         assertThat(log.getAction()).isEqualTo("LOGIN_FAILURE");
         assertThat(log.getEntity()).isEqualTo("Authentication");
         assertThat(log.getMetadata()).isEqualTo("email=admin@example.comX-Injected: true");
+
+        ArgumentCaptor<RealtimeEvent> eventCaptor = ArgumentCaptor.forClass(RealtimeEvent.class);
+        verify(eventHub).publish(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().type()).isEqualTo("auth.login.failure");
     }
 
     private void authenticate(UUID userId) {

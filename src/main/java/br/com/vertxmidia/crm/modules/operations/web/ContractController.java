@@ -34,7 +34,7 @@ public class ContractController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'CONTRACTS')")
     Page<ContractResponse> search(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID clientId,
@@ -44,32 +44,32 @@ public class ContractController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'CONTRACTS')")
     ContractResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'CONTRACTS')")
     ContractSummaryResponse summary() {
         return service.summary();
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'CONTRACTS')")
     ResponseEntity<ContractResponse> create(@Valid @RequestBody ContractRequest request) {
         ContractResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/contracts/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'CONTRACTS')")
     ContractResponse update(@PathVariable UUID id, @Valid @RequestBody ContractRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'CONTRACTS')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

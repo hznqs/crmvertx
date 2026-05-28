@@ -33,7 +33,8 @@ public class CrmEventService {
                 .where(OperationSpecifications.<CrmEvent>equalsText("status", status))
                 .and(OperationSpecifications.equalsUuid("clientId", clientId))
                 .and(OperationSpecifications.dateFrom("date", from))
-                .and(OperationSpecifications.dateTo("date", to));
+                .and(OperationSpecifications.dateTo("date", to))
+                .and((root, query, cb) -> cb.isTrue(root.get("active")));
         return repository.findAll(spec, pageable).map(CrmEventResponse::from);
     }
 
@@ -66,35 +67,46 @@ public class CrmEventService {
     @Transactional
     @CacheEvict(value = "dashboardMetrics", allEntries = true)
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Evento nao encontrado");
-        }
-        repository.deleteById(id);
-        auditService.log("DELETE", "Evento", id);
+        CrmEvent event = get(id);
+        event.setActive(false);
+        repository.save(event);
+        auditService.log("SOFT_DELETE", "Evento", id);
     }
 
     private CrmEvent get(UUID id) {
         return repository.findById(id)
+                .filter(CrmEvent::isActive)
                 .orElseThrow(() -> new EntityNotFoundException("Evento nao encontrado"));
     }
 
     private void apply(CrmEventRequest request, CrmEvent event) {
         event.setClientId(request.clientId());
+        event.setType(request.type() == null || request.type().isBlank() ? "REUNIAO" : request.type().trim());
         event.setTitle(request.title().trim());
         event.setDate(request.date());
         event.setTime(request.time());
         event.setStatus(request.status().trim());
         event.setSale(request.sale());
         event.setRevenue(request.revenue() == null ? BigDecimal.ZERO : request.revenue());
+        event.setNotes(blankToNull(request.notes()));
+        if (request.active() != null) {
+            event.setActive(request.active());
+        }
     }
 
     private void auditEventChanges(CrmEvent event, CrmEventRequest request) {
         auditService.logChange("Evento", event.getId(), "clientId", event.getClientId(), request.clientId());
+        auditService.logChange("Evento", event.getId(), "type", event.getType(), request.type());
         auditService.logChange("Evento", event.getId(), "title", event.getTitle(), request.title().trim());
         auditService.logChange("Evento", event.getId(), "date", event.getDate(), request.date());
         auditService.logChange("Evento", event.getId(), "time", event.getTime(), request.time());
         auditService.logChange("Evento", event.getId(), "status", event.getStatus(), request.status().trim());
         auditService.logChange("Evento", event.getId(), "sale", event.isSale(), request.sale());
         auditService.logChange("Evento", event.getId(), "revenue", event.getRevenue(), request.revenue() == null ? BigDecimal.ZERO : request.revenue());
+        auditService.logChange("Evento", event.getId(), "notes", event.getNotes(), blankToNull(request.notes()));
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

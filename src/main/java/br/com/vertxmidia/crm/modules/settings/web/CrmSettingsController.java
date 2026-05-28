@@ -22,13 +22,13 @@ public class CrmSettingsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'SETTINGS')")
     CrmSettingsResponse get() {
         return service.get();
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'SETTINGS')")
     CrmSettingsResponse save(@Valid @RequestBody CrmSettingsRequest request) {
         return service.save(request);
     }

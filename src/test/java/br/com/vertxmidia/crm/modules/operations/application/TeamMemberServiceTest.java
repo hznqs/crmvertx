@@ -16,11 +16,11 @@ class TeamMemberServiceTest {
         when(repository.countByFilters("dev", "ana")).thenReturn(3L);
         when(repository.sumTasksByFilters("dev", "ana")).thenReturn(40L);
         when(repository.sumCompletedByFilters("dev", "ana")).thenReturn(30L);
-        when(repository.countByRole("marketing")).thenReturn(2L);
-        when(repository.countByRole("trafego")).thenReturn(4L);
-        when(repository.countByRole("sdr")).thenReturn(5L);
-        when(repository.countByRole("closer")).thenReturn(6L);
-        when(repository.countByRole("dev")).thenReturn(7L);
+        when(repository.countByRoleAndActiveTrue("marketing")).thenReturn(2L);
+        when(repository.countByRoleAndActiveTrue("trafego")).thenReturn(4L);
+        when(repository.countByRoleAndActiveTrue("sdr")).thenReturn(5L);
+        when(repository.countByRoleAndActiveTrue("closer")).thenReturn(6L);
+        when(repository.countByRoleAndActiveTrue("dev")).thenReturn(7L);
 
         TeamMemberService service = new TeamMemberService(repository, mock(AuditService.class));
 

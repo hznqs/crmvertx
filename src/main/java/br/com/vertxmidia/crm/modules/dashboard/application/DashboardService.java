@@ -8,11 +8,18 @@ import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepositor
 import br.com.vertxmidia.crm.modules.operations.infrastructure.CrmEventRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.DeliveryRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.FinanceEntryRepository;
+import br.com.vertxmidia.crm.modules.projects.domain.ProjectStatus;
+import br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository;
+import br.com.vertxmidia.crm.modules.tasks.domain.TaskStatus;
+import br.com.vertxmidia.crm.modules.tasks.infrastructure.TaskRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
 import java.time.LocalDate;
+import java.util.List;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +34,8 @@ public class DashboardService {
     private final DeliveryRepository deliveries;
     private final FinanceEntryRepository financeEntries;
     private final ClientPerformanceRepository performanceRecords;
+    private final ProjectRepository projects;
+    private final TaskRepository tasks;
 
     public DashboardService(
             ClientRepository clients,
@@ -34,7 +43,9 @@ public class DashboardService {
             CrmEventRepository events,
             DeliveryRepository deliveries,
             FinanceEntryRepository financeEntries,
-            ClientPerformanceRepository performanceRecords
+            ClientPerformanceRepository performanceRecords,
+            ProjectRepository projects,
+            TaskRepository tasks
     ) {
         this.clients = clients;
         this.contracts = contracts;
@@ -42,6 +53,8 @@ public class DashboardService {
         this.deliveries = deliveries;
         this.financeEntries = financeEntries;
         this.performanceRecords = performanceRecords;
+        this.projects = projects;
+        this.tasks = tasks;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +74,11 @@ public class DashboardService {
         BigDecimal monthlyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", periodStart, periodEnd);
         BigDecimal previousMonthlyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", previousPeriodStart, previousPeriodEnd);
         BigDecimal mrr = financeEntries.sumRecurringByTypeAndStatus("receita", "pago");
+        BigDecimal periodExpenses = financeEntries.sumByTypeAndStatusAndDueBetween("despesa", "pago", periodStart, periodEnd);
+        BigDecimal periodCommissions = financeEntries.sumByTypeAndStatusAndDueBetween("comissao", "pago", periodStart, periodEnd);
+        BigDecimal periodTaxes = financeEntries.sumByTypeAndStatusAndDueBetween("imposto", "pago", periodStart, periodEnd);
+        BigDecimal netProfit = monthlyRevenue.subtract(periodExpenses).subtract(periodCommissions).subtract(periodTaxes);
+        BigDecimal profitMargin = percentage(netProfit, monthlyRevenue);
 
         // Faturamento diário (hoje) e semanal (últimos 7 dias)
         BigDecimal dailyRevenue = financeEntries.sumByTypeAndStatusAndDue("receita", "pago", today);
@@ -72,20 +90,36 @@ public class DashboardService {
         BigDecimal mediaRevenue = performanceRecords.sumRevenueBetween(periodStart, periodEnd);
         BigDecimal investment = performanceRecords.sumInvestmentBetween(periodStart, periodEnd);
 
-        // Follow-ups pendentes: eventos futuros ainda nao executados.
         long pendingFollowups = events.countPendingFollowups(today);
-
-        // Total de clientes
         long totalClients = clients.count();
+        long projectsInExecution = projects.countByStatusAndActiveTrue(ProjectStatus.EM_EXECUCAO);
+        long projectsAtRisk = projects.countBySlaDueDateLessThanEqualAndStatusNotInAndActiveTrue(
+                today.plusDays(3),
+                List.of(ProjectStatus.FINALIZADO, ProjectStatus.CANCELADO)
+        );
+        List<TaskStatus> closedTaskStatuses = List.of(TaskStatus.CONCLUIDA, TaskStatus.CANCELADA);
+        long openTasks = tasks.countByStatusNotInAndActiveTrue(closedTaskStatuses);
+        long lateTasks = tasks.countByDueDateBeforeAndStatusNotInAndActiveTrue(today, closedTaskStatuses);
+        long pendingDeliveries = deliveries.countByStatusAndFilters("backlog", null, "")
+                + deliveries.countByStatusAndFilters("pendente", null, "")
+                + deliveries.countByStatusAndFilters("planejamento", null, "");
+        long productionDeliveries = deliveries.countByStatusAndFilters("producao", null, "");
+        long reviewDeliveries = deliveries.countByStatusAndFilters("revisao", null, "")
+                + deliveries.countByStatusAndFilters("ajustes", null, "");
+        long lateDeliveries = deliveries.countLateByFilters(today, null, "");
+        BigDecimal operationalRiskRate = percentage(
+                BigDecimal.valueOf(projectsAtRisk + lateTasks + lateDeliveries),
+                BigDecimal.valueOf(Math.max(1, projectsInExecution + openTasks + pendingDeliveries + productionDeliveries + reviewDeliveries))
+        );
 
         return new DashboardMetricsResponse(
                 monthlyRevenue,
                 clients.countByPhase(ClientPhase.FECHADO),
                 clients.countByPhase(ClientPhase.PERDIDO),
-                contracts.countByStatusAndEndDateBetween("ativo", today, today.plusDays(30)),
-                contracts.countByStatus("ativo"),
+                contracts.countByStatusAndEndDateBetweenAndActiveTrue("ativo", today, today.plusDays(30)),
+                contracts.countByStatusAndActiveTrue("ativo"),
                 events.countByStatusAndDateBetween("executada", periodStart, periodEnd),
-                deliveries.countByDeadlineBeforeAndStatusNot(today, "aprovado"),
+                lateTasks,
                 percentage(BigDecimal.valueOf(sales), BigDecimal.valueOf(leads)),
                 roi(mediaRevenue, investment),
                 clients.averageTicketByPhase(ClientPhase.FECHADO),
@@ -94,8 +128,28 @@ public class DashboardService {
                 dailyRevenue,
                 weeklyRevenue,
                 pendingFollowups,
-                totalClients
+                totalClients,
+                projectsInExecution,
+                projectsAtRisk,
+                openTasks,
+                lateTasks,
+                periodExpenses,
+                periodCommissions,
+                periodTaxes,
+                netProfit,
+                profitMargin,
+                pendingDeliveries,
+                productionDeliveries,
+                reviewDeliveries,
+                lateDeliveries,
+                operationalRiskRate
         );
+    }
+
+    @Scheduled(fixedDelayString = "${app.performance.dashboard-cache-ttl-ms:60000}")
+    @CacheEvict(value = "dashboardMetrics", allEntries = true)
+    public void evictDashboardMetricsCache() {
+        // Keeps dashboard snapshots fast without allowing stale metrics to live forever.
     }
 
     private BigDecimal percentage(BigDecimal value, BigDecimal total) {

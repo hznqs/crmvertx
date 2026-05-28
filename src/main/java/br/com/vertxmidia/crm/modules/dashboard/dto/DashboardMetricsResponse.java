@@ -18,6 +18,20 @@ public record DashboardMetricsResponse(
         BigDecimal dailyRevenue,
         BigDecimal weeklyRevenue,
         long pendingFollowups,
-        long totalClients
+        long totalClients,
+        long projectsInExecution,
+        long projectsAtRisk,
+        long openTasks,
+        long lateTasks,
+        BigDecimal periodExpenses,
+        BigDecimal periodCommissions,
+        BigDecimal periodTaxes,
+        BigDecimal netProfit,
+        BigDecimal profitMargin,
+        long pendingDeliveries,
+        long productionDeliveries,
+        long reviewDeliveries,
+        long lateDeliveries,
+        BigDecimal operationalRiskRate
 ) {
 }

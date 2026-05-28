@@ -30,7 +30,8 @@ public class GoalService {
     public Page<GoalResponse> search(LocalDate from, LocalDate to, Pageable pageable) {
         Specification<Goal> spec = Specification
                 .where(OperationSpecifications.<Goal>dateFrom("date", from))
-                .and(OperationSpecifications.dateTo("date", to));
+                .and(OperationSpecifications.dateTo("date", to))
+                .and((root, query, cb) -> cb.isTrue(root.get("active")));
         return repository.findAll(spec, pageable).map(GoalResponse::from);
     }
 
@@ -60,25 +61,34 @@ public class GoalService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Meta nao encontrada");
-        }
-        repository.deleteById(id);
-        auditService.log("DELETE", "Meta", id);
+        Goal goal = get(id);
+        goal.setActive(false);
+        repository.save(goal);
+        auditService.log("SOFT_DELETE", "Meta", id);
     }
 
     private Goal get(UUID id) {
         return repository.findById(id)
+                .filter(Goal::isActive)
                 .orElseThrow(() -> new EntityNotFoundException("Meta nao encontrada"));
     }
 
     private void apply(GoalRequest request, Goal goal) {
+        goal.setType(request.type() == null || request.type().isBlank() ? "FATURAMENTO" : request.type().trim());
         goal.setTarget(request.target() == null ? BigDecimal.ZERO : request.target());
+        goal.setActual(request.actual() == null ? BigDecimal.ZERO : request.actual());
         goal.setDate(request.date());
+        goal.setPeriodStart(request.periodStart() == null ? request.date().withDayOfMonth(1) : request.periodStart());
+        goal.setPeriodEnd(request.periodEnd() == null ? request.date().withDayOfMonth(request.date().lengthOfMonth()) : request.periodEnd());
+        if (request.active() != null) {
+            goal.setActive(request.active());
+        }
     }
 
     private void auditGoalChanges(Goal goal, GoalRequest request) {
+        auditService.logChange("Meta", goal.getId(), "type", goal.getType(), request.type());
         auditService.logChange("Meta", goal.getId(), "target", goal.getTarget(), request.target() == null ? BigDecimal.ZERO : request.target());
+        auditService.logChange("Meta", goal.getId(), "actual", goal.getActual(), request.actual() == null ? BigDecimal.ZERO : request.actual());
         auditService.logChange("Meta", goal.getId(), "date", goal.getDate(), request.date());
     }
 }

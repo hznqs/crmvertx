@@ -1,7 +1,10 @@
 package br.com.vertxmidia.crm.modules.operations.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.domain.Client;
+import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.domain.CommissionSale;
+import br.com.vertxmidia.crm.modules.operations.domain.Contract;
 import br.com.vertxmidia.crm.modules.operations.domain.TeamMember;
 import br.com.vertxmidia.crm.modules.operations.dto.CommissionMemberStatsResponse;
 import br.com.vertxmidia.crm.modules.operations.dto.CommissionRankingResponse;
@@ -10,13 +13,17 @@ import br.com.vertxmidia.crm.modules.operations.dto.CommissionSaleResponse;
 import br.com.vertxmidia.crm.modules.operations.dto.CommissionSalesMetricsResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.CommissionSaleRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.TeamMemberRepository;
+import br.com.vertxmidia.crm.modules.services.domain.ServiceOffering;
+import br.com.vertxmidia.crm.modules.services.infrastructure.ServiceOfferingRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -32,17 +39,29 @@ public class CommissionSaleService {
 
     private final CommissionSaleRepository repository;
     private final TeamMemberRepository teamMemberRepository;
+    private final ServiceOfferingRepository serviceOfferingRepository;
+    private final ClientRepository clientRepository;
+    private final FinanceEntryService financeEntryService;
     private final AuditService auditService;
 
-    public CommissionSaleService(CommissionSaleRepository repository, TeamMemberRepository teamMemberRepository, AuditService auditService) {
+    public CommissionSaleService(CommissionSaleRepository repository,
+                                 TeamMemberRepository teamMemberRepository,
+                                 ServiceOfferingRepository serviceOfferingRepository,
+                                 ClientRepository clientRepository,
+                                 FinanceEntryService financeEntryService,
+                                 AuditService auditService) {
         this.repository = repository;
         this.teamMemberRepository = teamMemberRepository;
+        this.serviceOfferingRepository = serviceOfferingRepository;
+        this.clientRepository = clientRepository;
+        this.financeEntryService = financeEntryService;
         this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
     public Page<CommissionSaleResponse> search(UUID memberId, Pageable pageable) {
-        Specification<CommissionSale> spec = Specification.where(OperationSpecifications.equalsUuid("memberId", memberId));
+        Specification<CommissionSale> spec = Specification.where(OperationSpecifications.<CommissionSale>equalsUuid("memberId", memberId))
+                .and((root, query, cb) -> cb.isTrue(root.get("active")));
         return repository.findAll(spec, pageable).map(CommissionSaleResponse::from);
     }
 
@@ -89,6 +108,7 @@ public class CommissionSaleService {
         CommissionSale sale = new CommissionSale();
         apply(request, sale);
         CommissionSale saved = repository.save(sale);
+        financeEntryService.syncCommissionExpense(saved);
         auditService.log("CREATE", "Comissao", saved.getId());
         return CommissionSaleResponse.from(saved);
     }
@@ -99,34 +119,164 @@ public class CommissionSaleService {
         auditCommissionChanges(sale, request);
         apply(request, sale);
         CommissionSale saved = repository.save(sale);
+        financeEntryService.syncCommissionExpense(saved);
         auditService.log("UPDATE", "Comissao", saved.getId());
         return CommissionSaleResponse.from(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Comissao nao encontrada");
+        CommissionSale sale = get(id);
+        sale.setActive(false);
+        sale.setStatus("CANCELADA");
+        CommissionSale saved = repository.save(sale);
+        financeEntryService.syncCommissionExpense(saved);
+        auditService.log("SOFT_DELETE", "Comissao", id);
+    }
+
+    @Transactional
+    public Optional<CommissionSaleResponse> syncContractCommission(Contract contract) {
+        Optional<CommissionSale> currentCommission = repository.findFirstByContractIdAndActiveTrue(contract.getId());
+
+        if (!isCommissionGeneratingContract(contract)) {
+            currentCommission.ifPresent(this::cancelOpenCommission);
+            return Optional.empty();
         }
-        repository.deleteById(id);
-        auditService.log("DELETE", "Comissao", id);
+
+        Optional<ServiceOffering> service = contract.getServiceId() == null
+                ? Optional.empty()
+                : serviceOfferingRepository.findByIdAndActiveTrue(contract.getServiceId());
+        BigDecimal commissionPercent = service
+                .map(ServiceOffering::getCommissionPercentage)
+                .orElse(BigDecimal.ZERO);
+
+        if (commissionPercent.compareTo(BigDecimal.ZERO) <= 0) {
+            currentCommission.ifPresent(this::cancelOpenCommission);
+            return Optional.empty();
+        }
+
+        Optional<TeamMember> seller = currentCommission
+                .map(CommissionSale::getMemberId)
+                .flatMap(teamMemberRepository::findById)
+                .filter(TeamMember::isActive)
+                .or(() -> sellerFromContract(contract));
+
+        if (seller.isEmpty()) {
+            currentCommission.ifPresent(this::cancelOpenCommission);
+            return Optional.empty();
+        }
+
+        CommissionSale sale = currentCommission.orElseGet(CommissionSale::new);
+        if ("PAGA".equalsIgnoreCase(sale.getStatus())) {
+            return Optional.of(CommissionSaleResponse.from(sale));
+        }
+
+        boolean isNewCommission = sale.getId() == null;
+        applyContractCommission(contract, service, seller.get(), commissionPercent, sale);
+        CommissionSale saved = repository.save(sale);
+        financeEntryService.syncCommissionExpense(saved);
+        auditService.log(isNewCommission ? "CREATE_CONTRACT_COMMISSION" : "UPDATE_CONTRACT_COMMISSION", "Comissao", saved.getId());
+        return Optional.of(CommissionSaleResponse.from(saved));
     }
 
     private CommissionSale get(UUID id) {
         return repository.findById(id)
+                .filter(CommissionSale::isActive)
                 .orElseThrow(() -> new EntityNotFoundException("Comissao nao encontrada"));
+    }
+
+    private void applyContractCommission(Contract contract,
+                                         Optional<ServiceOffering> service,
+                                         TeamMember seller,
+                                         BigDecimal commissionPercent,
+                                         CommissionSale sale) {
+        sale.setMemberId(seller.getId());
+        sale.setType("VENDA");
+        if (sale.getStatus() == null || sale.getStatus().isBlank() || "CANCELADA".equalsIgnoreCase(sale.getStatus())) {
+            sale.setStatus("PENDENTE");
+        }
+        sale.setContractId(contract.getId());
+        sale.setFinanceEntryId(null);
+        sale.setClient(clientName(contract).orElse(projectedClientName(contract, service)));
+        sale.setValue(commissionBaseValue(contract, service));
+        sale.setPercent(commissionPercent);
+        sale.setGoal(sale.getGoal());
+        sale.setActive(true);
+    }
+
+    private void cancelOpenCommission(CommissionSale sale) {
+        if ("PAGA".equalsIgnoreCase(sale.getStatus())) {
+            return;
+        }
+        auditService.logChange("Comissao", sale.getId(), "status", sale.getStatus(), "CANCELADA");
+        auditService.logChange("Comissao", sale.getId(), "active", sale.isActive(), false);
+        sale.setStatus("CANCELADA");
+        sale.setActive(false);
+        repository.save(sale);
+        auditService.log("CANCEL_CONTRACT_COMMISSION", "Comissao", sale.getId());
+    }
+
+    private boolean isCommissionGeneratingContract(Contract contract) {
+        return contract.isActive()
+                && "ativo".equalsIgnoreCase(contract.getStatus())
+                && contract.getClientId() != null;
+    }
+
+    private Optional<TeamMember> sellerFromContract(Contract contract) {
+        UUID userId = contract.getUpdatedBy() == null ? contract.getCreatedBy() : contract.getUpdatedBy();
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return teamMemberRepository.findFirstByUserIdAndActiveTrue(userId);
+    }
+
+    private Optional<String> clientName(Contract contract) {
+        if (contract.getClientId() == null) {
+            return Optional.empty();
+        }
+        return clientRepository.findByIdAndActiveTrue(contract.getClientId()).map(Client::getName);
+    }
+
+    private String projectedClientName(Contract contract, Optional<ServiceOffering> service) {
+        return service.map(ServiceOffering::getName)
+                .map(name -> "Cliente contrato " + contract.getId() + " - " + name)
+                .orElse("Cliente contrato " + contract.getId());
+    }
+
+    private BigDecimal commissionBaseValue(Contract contract, Optional<ServiceOffering> service) {
+        if (contract.getTotalValue() != null && contract.getTotalValue().compareTo(BigDecimal.ZERO) > 0) {
+            return contract.getTotalValue();
+        }
+        if (contract.getMonthlyValue() != null && contract.getMonthlyValue().compareTo(BigDecimal.ZERO) > 0) {
+            return contract.getMonthlyValue();
+        }
+        return service.map(ServiceOffering::getBasePrice).orElse(BigDecimal.ZERO);
     }
 
     private void apply(CommissionSaleRequest request, CommissionSale sale) {
         sale.setMemberId(request.memberId());
+        sale.setType(request.type() == null || request.type().isBlank() ? "VENDA" : request.type().trim());
+        sale.setStatus(request.status() == null || request.status().isBlank() ? "PENDENTE" : request.status().trim());
+        sale.setContractId(request.contractId());
+        sale.setFinanceEntryId(request.financeEntryId());
         sale.setClient(blankToNull(request.client()));
         sale.setValue(request.value() == null ? BigDecimal.ZERO : request.value());
         sale.setPercent(request.percent() == null ? BigDecimal.ZERO : request.percent());
         sale.setGoal(request.goal() == null ? 0 : request.goal());
+        if ("PAGA".equalsIgnoreCase(sale.getStatus()) && sale.getPaidAt() == null) {
+            sale.setPaidAt(Instant.now());
+        }
+        if (request.active() != null) {
+            sale.setActive(request.active());
+        }
     }
 
     private void auditCommissionChanges(CommissionSale sale, CommissionSaleRequest request) {
         auditService.logChange("Comissao", sale.getId(), "memberId", sale.getMemberId(), request.memberId());
+        auditService.logChange("Comissao", sale.getId(), "type", sale.getType(), request.type());
+        auditService.logChange("Comissao", sale.getId(), "status", sale.getStatus(), request.status());
+        auditService.logChange("Comissao", sale.getId(), "contractId", sale.getContractId(), request.contractId());
+        auditService.logChange("Comissao", sale.getId(), "financeEntryId", sale.getFinanceEntryId(), request.financeEntryId());
         auditService.logChange("Comissao", sale.getId(), "client", sale.getClient(), blankToNull(request.client()));
         auditService.logChange("Comissao", sale.getId(), "value", sale.getValue(), request.value() == null ? BigDecimal.ZERO : request.value());
         auditService.logChange("Comissao", sale.getId(), "percent", sale.getPercent(), request.percent() == null ? BigDecimal.ZERO : request.percent());

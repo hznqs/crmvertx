@@ -35,7 +35,7 @@ public class CommissionSaleController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'COMMISSIONS')")
     Page<CommissionSaleResponse> search(
             @RequestParam(required = false) UUID memberId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
@@ -44,38 +44,38 @@ public class CommissionSaleController {
     }
 
     @GetMapping("/metrics")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'COMMISSIONS')")
     CommissionSalesMetricsResponse metrics(@RequestParam(required = false) UUID memberId) {
         return service.metrics(memberId);
     }
 
     @GetMapping("/ranking")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'COMMISSIONS')")
     CommissionRankingResponse ranking() {
         return service.ranking();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'COMMISSIONS')")
     CommissionSaleResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'COMMISSIONS')")
     ResponseEntity<CommissionSaleResponse> create(@Valid @RequestBody CommissionSaleRequest request) {
         CommissionSaleResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/commission-sales/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'COMMISSIONS')")
     CommissionSaleResponse update(@PathVariable UUID id, @Valid @RequestBody CommissionSaleRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'COMMISSIONS')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

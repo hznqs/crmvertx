@@ -4,17 +4,22 @@ import br.com.vertxmidia.crm.modules.operations.domain.FinanceEntry;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID>, JpaSpecificationExecutor<FinanceEntry> {
+
+    Optional<FinanceEntry> findFirstByContractIdAndTypeAndAutoBillingTrueAndActiveTrue(UUID contractId, String type);
+
     @Query("""
             select coalesce(sum(entry.value), 0)
             from FinanceEntry entry
             where entry.type = :type
               and entry.status = :status
+              and entry.active = true
               and entry.due between :start and :end
             """)
     BigDecimal sumByTypeAndStatusAndDueBetween(String type, String status, LocalDate start, LocalDate end);
@@ -23,6 +28,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             select coalesce(sum(entry.value), 0)
             from FinanceEntry entry
             where entry.type = :type
+              and entry.active = true
               and (:from is null or entry.due >= :from)
               and (:to is null or entry.due <= :to)
             """)
@@ -32,6 +38,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             select coalesce(sum(entry.value), 0)
             from FinanceEntry entry
             where entry.status = :status
+              and entry.active = true
               and (:from is null or entry.due >= :from)
               and (:to is null or entry.due <= :to)
             """)
@@ -42,6 +49,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             from FinanceEntry entry
             where entry.type = :type
               and entry.recurring = true
+              and entry.active = true
               and (:from is null or entry.due >= :from)
               and (:to is null or entry.due <= :to)
             """)
@@ -51,6 +59,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             select count(entry)
             from FinanceEntry entry
             where entry.autoBilling = true
+              and entry.active = true
               and (:from is null or entry.due >= :from)
               and (:to is null or entry.due <= :to)
             """)
@@ -62,6 +71,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             where entry.type = :type
               and entry.status = :status
               and entry.recurring = true
+              and entry.active = true
             """)
     BigDecimal sumRecurringByTypeAndStatus(String type, String status);
 
@@ -70,6 +80,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             from FinanceEntry entry
             where entry.type = :type
               and entry.status = :status
+              and entry.active = true
               and entry.due = :date
             """)
     BigDecimal sumByTypeAndStatusAndDue(String type, String status, LocalDate date);
@@ -79,6 +90,7 @@ public interface FinanceEntryRepository extends JpaRepository<FinanceEntry, UUID
             from FinanceEntry entry
             where entry.type = :type
               and entry.status = :status
+              and entry.active = true
               and entry.due between :start and :end
             group by entry.due
             order by entry.due

@@ -27,7 +27,7 @@ public class AuditController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'AUDIT')")
     Page<AuditLogResponse> list(
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) String action,

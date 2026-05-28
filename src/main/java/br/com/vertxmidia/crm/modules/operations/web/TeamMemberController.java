@@ -34,7 +34,7 @@ public class TeamMemberController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'TEAM')")
     Page<TeamMemberResponse> search(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String search,
@@ -44,13 +44,13 @@ public class TeamMemberController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'TEAM')")
     TeamMemberResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'TEAM')")
     TeamSummaryResponse summary(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String search
@@ -59,20 +59,20 @@ public class TeamMemberController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'TEAM')")
     ResponseEntity<TeamMemberResponse> create(@Valid @RequestBody TeamMemberRequest request) {
         TeamMemberResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/team-members/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'TEAM')")
     TeamMemberResponse update(@PathVariable UUID id, @Valid @RequestBody TeamMemberRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'TEAM')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

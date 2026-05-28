@@ -22,13 +22,13 @@ public class OrganizationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'ORGANIZATION')")
     OrganizationResponse get() {
         return service.get();
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'ORGANIZATION')")
     OrganizationResponse save(@Valid @RequestBody OrganizationRequest request) {
         return service.save(request);
     }

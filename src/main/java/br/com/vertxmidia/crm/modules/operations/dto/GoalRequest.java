@@ -2,11 +2,18 @@ package br.com.vertxmidia.crm.modules.operations.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record GoalRequest(
+        @Pattern(regexp = "^(FATURAMENTO|VENDAS|CLIENTES|REUNIOES|ENTREGAS|LUCRO)$", message = "Tipo de meta invalido")
+        String type,
         @DecimalMin("0.00") BigDecimal target,
-        @NotNull LocalDate date
+        @DecimalMin("0.00") BigDecimal actual,
+        @NotNull LocalDate date,
+        LocalDate periodStart,
+        LocalDate periodEnd,
+        Boolean active
 ) {
 }

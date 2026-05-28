@@ -8,6 +8,10 @@ import java.util.UUID;
 
 public record FinanceEntryResponse(
         UUID id,
+        UUID clientId,
+        UUID contractId,
+        UUID projectId,
+        UUID serviceId,
         String type,
         String status,
         String description,
@@ -15,12 +19,18 @@ public record FinanceEntryResponse(
         LocalDate due,
         boolean recurring,
         boolean autoBilling,
+        String costCenter,
+        boolean active,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static FinanceEntryResponse from(FinanceEntry entry) {
         return new FinanceEntryResponse(
                 entry.getId(),
+                entry.getClientId(),
+                entry.getContractId(),
+                entry.getProjectId(),
+                entry.getServiceId(),
                 entry.getType(),
                 entry.getStatus(),
                 entry.getDescription(),
@@ -28,6 +38,8 @@ public record FinanceEntryResponse(
                 entry.getDue(),
                 entry.isRecurring(),
                 entry.isAutoBilling(),
+                entry.getCostCenter(),
+                entry.isActive(),
                 entry.getCreatedAt(),
                 entry.getUpdatedAt()
         );

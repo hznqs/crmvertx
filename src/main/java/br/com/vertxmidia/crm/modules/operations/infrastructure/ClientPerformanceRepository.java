@@ -12,28 +12,32 @@ public interface ClientPerformanceRepository extends JpaRepository<ClientPerform
     @Query("""
             select coalesce(sum(record.leads), 0)
             from ClientPerformance record
-            where record.date between :start and :end
+            where record.active = true
+              and record.date between :start and :end
             """)
     long sumLeadsBetween(LocalDate start, LocalDate end);
 
     @Query("""
             select coalesce(sum(record.sales), 0)
             from ClientPerformance record
-            where record.date between :start and :end
+            where record.active = true
+              and record.date between :start and :end
             """)
     long sumSalesBetween(LocalDate start, LocalDate end);
 
     @Query("""
             select coalesce(sum(record.revenue), 0)
             from ClientPerformance record
-            where record.date between :start and :end
+            where record.active = true
+              and record.date between :start and :end
             """)
     BigDecimal sumRevenueBetween(LocalDate start, LocalDate end);
 
     @Query("""
             select coalesce(sum(record.investment), 0)
             from ClientPerformance record
-            where record.date between :start and :end
+            where record.active = true
+              and record.date between :start and :end
             """)
     BigDecimal sumInvestmentBetween(LocalDate start, LocalDate end);
 }

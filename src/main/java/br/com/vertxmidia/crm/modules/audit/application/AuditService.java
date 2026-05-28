@@ -1,7 +1,12 @@
 package br.com.vertxmidia.crm.modules.audit.application;
 
+import br.com.vertxmidia.crm.common.realtime.RealtimeEvent;
+import br.com.vertxmidia.crm.common.realtime.RealtimeEventHub;
 import br.com.vertxmidia.crm.modules.audit.domain.AuditLog;
 import br.com.vertxmidia.crm.modules.audit.infrastructure.AuditLogRepository;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,9 +23,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AuditService {
 
     private final AuditLogRepository repository;
+    private final RealtimeEventHub eventHub;
 
-    public AuditService(AuditLogRepository repository) {
+    public AuditService(AuditLogRepository repository, RealtimeEventHub eventHub) {
         this.repository = repository;
+        this.eventHub = eventHub;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -31,7 +38,7 @@ public class AuditService {
         log.setEntity(entity);
         log.setEntityId(entityId);
         log.setIpAddress(currentIpAddress());
-        repository.save(log);
+        publish(repository.save(log));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -42,7 +49,7 @@ public class AuditService {
         log.setEntity("Authentication");
         log.setMetadata("email=" + sanitizeMetadata(email));
         log.setIpAddress(currentIpAddress());
-        repository.save(log);
+        publish(repository.save(log));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -60,11 +67,44 @@ public class AuditService {
         log.setOldValue(normalize(oldValue));
         log.setNewValue(normalize(newValue));
         log.setIpAddress(currentIpAddress());
-        repository.save(log);
+        publish(repository.save(log));
     }
 
     private String normalize(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private void publish(AuditLog log) {
+        if (log == null) {
+            return;
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("auditId", log.getId() == null ? "" : log.getId().toString());
+        payload.put("entity", log.getEntity());
+        payload.put("action", log.getAction());
+        payload.put("fieldName", log.getFieldName() == null ? "" : log.getFieldName());
+        payload.put("oldValue", log.getOldValue() == null ? "" : log.getOldValue());
+        payload.put("newValue", log.getNewValue() == null ? "" : log.getNewValue());
+        payload.put("metadata", log.getMetadata() == null ? "" : log.getMetadata());
+        payload.put("createdAt", log.getCreatedAt() == null ? Instant.now().toString() : log.getCreatedAt().toString());
+
+        eventHub.publish(RealtimeEvent.of(
+                eventType(log),
+                "activity",
+                log.getUserId(),
+                log.getEntity(),
+                log.getEntityId(),
+                log.getAction(),
+                payload
+        ));
+    }
+
+    private String eventType(AuditLog log) {
+        if ("Authentication".equals(log.getEntity())) {
+            return "auth." + log.getAction().toLowerCase().replace('_', '.');
+        }
+        return "activity." + log.getAction().toLowerCase();
     }
 
     private String sanitizeMetadata(String value) {

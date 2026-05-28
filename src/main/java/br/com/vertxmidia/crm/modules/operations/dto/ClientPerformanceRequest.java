@@ -13,6 +13,7 @@ public record ClientPerformanceRequest(
         @Min(0) Integer leads,
         @Min(0) Integer sales,
         @DecimalMin("0.00") BigDecimal revenue,
-        @DecimalMin("0.00") BigDecimal investment
+        @DecimalMin("0.00") BigDecimal investment,
+        Boolean active
 ) {
 }

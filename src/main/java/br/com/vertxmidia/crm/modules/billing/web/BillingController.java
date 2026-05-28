@@ -18,7 +18,7 @@ public class BillingController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'BILLING')")
     BillingSummaryResponse summary() {
         return service.summary();
     }

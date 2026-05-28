@@ -26,7 +26,8 @@ class SecurityConfigTest {
         assertThat(cors.getAllowedOrigins()).containsExactly("http://localhost:8080", "https://crm.example.com");
         assertThat(cors.getAllowedOriginPatterns()).containsExactly("https://*.up.railway.app");
         assertThat(cors.getAllowedMethods()).contains("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
-        assertThat(cors.getAllowedHeaders()).containsExactly("Authorization", "Content-Type");
+        assertThat(cors.getAllowedHeaders()).containsExactly("Authorization", "Content-Type", "X-Correlation-Id");
+        assertThat(cors.getExposedHeaders()).containsExactly("X-Correlation-Id");
     }
 
     @Test

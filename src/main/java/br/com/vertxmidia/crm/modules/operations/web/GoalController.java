@@ -35,7 +35,7 @@ public class GoalController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'GOALS')")
     Page<GoalResponse> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
@@ -45,26 +45,26 @@ public class GoalController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'GOALS')")
     GoalResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'GOALS')")
     ResponseEntity<GoalResponse> create(@Valid @RequestBody GoalRequest request) {
         GoalResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/goals/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'GOALS')")
     GoalResponse update(@PathVariable UUID id, @Valid @RequestBody GoalRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'GOALS')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

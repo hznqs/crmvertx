@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -17,6 +18,8 @@ import org.hibernate.annotations.UuidGenerator;
 public class TeamMember extends TimestampedEntity implements OperationResource {
     @Id @GeneratedValue @UuidGenerator
     private UUID id;
+    @Column(name = "user_id")
+    private UUID userId;
     @NotBlank
     @Size(max = 160)
     @Column(nullable = false, length = 160)
@@ -40,8 +43,26 @@ public class TeamMember extends TimestampedEntity implements OperationResource {
     @Size(max = 10000)
     @Column(name = "task_breakdown", columnDefinition = "text")
     private String taskBreakdown;
+    @Size(max = 180)
+    @Column(length = 180)
+    private String email;
+    @Size(max = 40)
+    @Column(length = 40)
+    private String phone;
+    @Column(name = "hourly_cost", nullable = false, precision = 14, scale = 2)
+    private BigDecimal hourlyCost = BigDecimal.ZERO;
+    @Column(name = "capacity_hours_month", nullable = false)
+    private Integer capacityHoursMonth = 160;
+    @Column(nullable = false)
+    private boolean active = true;
+    @Column(name = "created_by")
+    private UUID createdBy;
+    @Column(name = "updated_by")
+    private UUID updatedBy;
 
     public UUID getId() { return id; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getRole() { return role; }
@@ -56,4 +77,18 @@ public class TeamMember extends TimestampedEntity implements OperationResource {
     public void setNotes(String notes) { this.notes = notes; }
     public String getTaskBreakdown() { return taskBreakdown; }
     public void setTaskBreakdown(String taskBreakdown) { this.taskBreakdown = taskBreakdown; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public BigDecimal getHourlyCost() { return hourlyCost; }
+    public void setHourlyCost(BigDecimal hourlyCost) { this.hourlyCost = hourlyCost; }
+    public Integer getCapacityHoursMonth() { return capacityHoursMonth; }
+    public void setCapacityHoursMonth(Integer capacityHoursMonth) { this.capacityHoursMonth = capacityHoursMonth; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public UUID getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
 }

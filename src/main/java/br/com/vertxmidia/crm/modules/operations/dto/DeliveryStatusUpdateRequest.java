@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Pattern;
 
 public record DeliveryStatusUpdateRequest(
         @NotBlank
-        @Pattern(regexp = "^(pendente|producao|revisao|aprovado)$", message = "Status de entrega invalido")
+        @Pattern(regexp = "^(backlog|planejamento|pendente|producao|revisao|ajustes|aprovado)$", message = "Status de entrega invalido")
         String status
 ) {
 }

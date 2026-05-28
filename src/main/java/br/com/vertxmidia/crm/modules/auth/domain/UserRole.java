@@ -6,6 +6,7 @@ public enum UserRole {
     COMERCIAL,
     OPERACIONAL,
     FINANCEIRO,
+    SUPORTE,
     MANAGER,
     USER
 }

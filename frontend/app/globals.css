@@ -1,0 +1,261 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --color-ink: 0 0% 4%;
+    --color-canvas: 270 20% 5%;
+    --color-panel: 288 12% 7%;
+    --color-elevated: 275 15% 10%;
+    --color-overlay: 0 0% 4%;
+    --color-line: 255 255 255;
+    --color-foreground: 210 40% 98%;
+    --color-subdued: 220 12% 67%;
+    --color-primary: 278 86% 36%;
+    --color-secondary: 305 78% 63%;
+    --color-success: 158 64% 52%;
+    --color-warning: 42 95% 58%;
+    --color-danger: 348 83% 62%;
+    --background: var(--color-ink);
+    --surface: var(--color-panel);
+    --surface-elevated: var(--color-elevated);
+    --border: 0 0% 100% / .1;
+    --text: var(--color-foreground);
+    --muted: var(--color-subdued);
+    --brand: var(--color-secondary);
+    --success: var(--color-success);
+    --warning: var(--color-warning);
+    --danger: var(--color-danger);
+    --brand-primary: #6a0dad;
+    --brand-secondary: #ea59dc;
+    --brand-black: #090909;
+    --radius-crm: 0.75rem;
+    --radius-crm-lg: 1rem;
+    --radius-crm-xl: 1.25rem;
+    --motion-premium: cubic-bezier(.16,1,.3,1);
+    --shadow-panel: 0 1px 0 rgba(255,255,255,.045), 0 18px 54px rgba(0,0,0,.34);
+    --shadow-glow: 0 0 0 1px rgba(234,89,220,.10), 0 22px 80px rgba(0,0,0,.45), 0 0 42px rgba(106,13,173,.18);
+    --shadow-popover: 0 24px 90px rgba(0,0,0,.62), 0 0 0 1px rgba(234,89,220,.11), inset 0 1px 0 rgba(255,255,255,.04);
+    --shadow-focus: 0 0 0 4px rgba(106,13,173,.24), 0 0 34px rgba(234,89,220,.13);
+    --chart-brand: #ea59dc;
+    --chart-primary: #6a0dad;
+    --chart-success: #34d399;
+    --chart-warning: #fbbf24;
+    --chart-danger: #fb7185;
+  }
+
+  * {
+    @apply border-line;
+  }
+
+  body {
+    @apply bg-ink text-theme-foreground antialiased;
+    background:
+      radial-gradient(circle at 16% -12%, rgba(106,13,173,.24), transparent 34rem),
+      radial-gradient(circle at 82% 0%, rgba(234,89,220,.12), transparent 28rem),
+      linear-gradient(180deg, rgba(255,255,255,.035), transparent 18rem),
+      var(--brand-black);
+  }
+
+  ::selection {
+    background: rgba(234, 89, 220, .34);
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    height: .75rem;
+    width: .75rem;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, .035);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid rgba(9, 9, 9, .92);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(234, 89, 220, .78), rgba(106, 13, 173, .86));
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #ea59dc, #6a0dad);
+  }
+
+  input,
+  select,
+  textarea {
+    @apply rounded-crm border border-line bg-white/[0.045] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.035)] outline-none transition duration-premium ease-premium placeholder:text-zinc-500;
+    color-scheme: dark;
+    accent-color: var(--brand-secondary);
+  }
+
+  input:hover,
+  select:hover,
+  textarea:hover {
+    border-color: rgba(234, 89, 220, .28);
+    background-color: rgba(255, 255, 255, .06);
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    border-color: rgba(234, 89, 220, .78);
+    box-shadow: var(--shadow-focus);
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+  }
+
+  input:invalid:not(:placeholder-shown),
+  textarea:invalid:not(:placeholder-shown),
+  select:invalid:not(:placeholder-shown) {
+    border-color: rgba(251, 113, 133, .55);
+    box-shadow: 0 0 0 4px rgba(251, 113, 133, .12);
+  }
+
+  select {
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #ea59dc 50%),
+      linear-gradient(135deg, #ea59dc 50%, transparent 50%),
+      linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+    background-position:
+      calc(100% - 18px) 50%,
+      calc(100% - 12px) 50%,
+      0 0;
+    background-repeat: no-repeat;
+    background-size: 6px 6px, 6px 6px, 100% 100%;
+    padding-right: 2.75rem;
+  }
+
+  select option,
+  select optgroup {
+    background: hsl(var(--color-panel));
+    color: #f8fafc;
+  }
+
+  select option:checked {
+    background: #6a0dad;
+    color: #ffffff;
+  }
+
+  input[type="date"],
+  input[type="month"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: dark;
+    background-image:
+      radial-gradient(circle at 90% 50%, rgba(234,89,220,.18), transparent 24px),
+      linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(1) brightness(1.35) saturate(.8);
+    opacity: .85;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="month"]::-webkit-calendar-picker-indicator:hover,
+  input[type="time"]::-webkit-calendar-picker-indicator:hover,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+}
+
+@layer components {
+  .crm-surface {
+    @apply rounded-crm-lg border border-line bg-panel/95 shadow-panel backdrop-blur-xl;
+  }
+
+  .crm-surface-elevated {
+    @apply rounded-crm-xl border border-line-strong bg-elevated/95 shadow-glow backdrop-blur-xl;
+  }
+
+  .crm-button-primary {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-crm bg-gradient-to-r from-brand-600 to-brand-500 px-4 text-sm font-black text-white shadow-[0_0_28px_rgba(234,89,220,.18)] transition duration-premium ease-premium hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-55;
+  }
+
+  .crm-button-secondary {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-crm border border-line bg-white/[0.045] px-4 text-sm font-bold text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition duration-premium ease-premium hover:border-brand-400/35 hover:bg-brand-500/15 hover:text-white focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-55;
+  }
+
+  .crm-button-ghost {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-crm px-4 text-sm font-bold text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-55;
+  }
+
+  .crm-badge {
+    @apply inline-flex items-center rounded-full border border-line bg-white/[0.045] px-2.5 py-1 text-xs font-bold text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,.03)];
+  }
+
+  .crm-badge-brand {
+    @apply border-brand-400/30 bg-brand-500/15 text-fuchsia-100 shadow-[0_0_24px_rgba(234,89,220,.10)];
+  }
+
+  .crm-table-shell {
+    @apply overflow-hidden rounded-crm-lg border border-line bg-panel/70 shadow-panel backdrop-blur-xl;
+  }
+
+  .crm-table-head {
+    @apply sticky top-0 z-10 bg-ink/90 text-xs uppercase tracking-[0.14em] text-zinc-500 backdrop-blur-xl;
+  }
+}
+
+@layer utilities {
+  .premium-focus {
+    @apply outline-none transition duration-premium ease-premium focus-visible:shadow-focus;
+  }
+
+  .glass-panel {
+    @apply border border-line bg-white/[0.045] shadow-panel backdrop-blur-xl;
+  }
+
+  .calendar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(232, 121, 249, .65) rgba(255, 255, 255, .05);
+  }
+
+  .crm-popover-surface {
+    @apply rounded-crm-xl border border-line-strong bg-ink/95 shadow-popover backdrop-blur-xl;
+  }
+
+  .crm-overlay-backdrop {
+    @apply fixed inset-0 z-40 bg-[#090909]/40 backdrop-blur-sm;
+  }
+
+  .crm-floating-panel {
+    @apply crm-popover-surface animate-crm-enter overflow-hidden;
+  }
+
+  .crm-menu-item {
+    @apply rounded-crm px-3 py-2 text-sm font-semibold text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus:bg-brand-500/15 focus:text-white focus:outline-none data-[selected=true]:bg-brand-500/15 data-[selected=true]:text-white;
+  }
+
+  .crm-menu-item-active {
+    @apply bg-brand-500/15 text-white shadow-[0_0_28px_rgba(234,89,220,.12)];
+  }
+
+  .crm-control {
+    @apply min-h-11 rounded-crm border border-line bg-white/[0.045] px-3 text-sm text-white outline-none transition duration-premium ease-premium placeholder:text-zinc-500 hover:border-brand-400/30 hover:bg-white/[0.06] focus:border-brand-400 focus:shadow-focus;
+  }
+
+  .crm-select-trigger {
+    @apply crm-control flex w-full items-center justify-between gap-3 text-left font-semibold;
+  }
+
+  .crm-active-ring {
+    @apply ring-1 ring-brand-400/35 shadow-[0_0_30px_rgba(234,89,220,.16)];
+  }
+}

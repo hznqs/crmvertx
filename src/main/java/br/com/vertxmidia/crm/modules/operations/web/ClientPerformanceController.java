@@ -35,7 +35,7 @@ public class ClientPerformanceController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'PERFORMANCE')")
     Page<ClientPerformanceResponse> search(
             @RequestParam(required = false) UUID clientId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -46,26 +46,26 @@ public class ClientPerformanceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'PERFORMANCE')")
     ClientPerformanceResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'PERFORMANCE')")
     ResponseEntity<ClientPerformanceResponse> create(@Valid @RequestBody ClientPerformanceRequest request) {
         ClientPerformanceResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/performance-records/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','COMERCIAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'PERFORMANCE')")
     ClientPerformanceResponse update(@PathVariable UUID id, @Valid @RequestBody ClientPerformanceRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'PERFORMANCE')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

@@ -32,7 +32,8 @@ public class ClientPerformanceService {
         Specification<ClientPerformance> spec = Specification
                 .where(OperationSpecifications.<ClientPerformance>equalsUuid("clientId", clientId))
                 .and(OperationSpecifications.dateFrom("date", from))
-                .and(OperationSpecifications.dateTo("date", to));
+                .and(OperationSpecifications.dateTo("date", to))
+                .and((root, query, cb) -> cb.isTrue(root.get("active")));
         return repository.findAll(spec, pageable).map(ClientPerformanceResponse::from);
     }
 
@@ -65,15 +66,15 @@ public class ClientPerformanceService {
     @Transactional
     @CacheEvict(value = "dashboardMetrics", allEntries = true)
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Performance nao encontrada");
-        }
-        repository.deleteById(id);
-        auditService.log("DELETE", "Performance", id);
+        ClientPerformance record = get(id);
+        record.setActive(false);
+        repository.save(record);
+        auditService.log("SOFT_DELETE", "Performance", id);
     }
 
     private ClientPerformance get(UUID id) {
         return repository.findById(id)
+                .filter(ClientPerformance::isActive)
                 .orElseThrow(() -> new EntityNotFoundException("Performance nao encontrada"));
     }
 
@@ -84,6 +85,9 @@ public class ClientPerformanceService {
         record.setSales(request.sales() == null ? 0 : request.sales());
         record.setRevenue(request.revenue() == null ? BigDecimal.ZERO : request.revenue());
         record.setInvestment(request.investment() == null ? BigDecimal.ZERO : request.investment());
+        if (request.active() != null) {
+            record.setActive(request.active());
+        }
     }
 
     private void auditPerformanceChanges(ClientPerformance record, ClientPerformanceRequest request) {
@@ -93,5 +97,6 @@ public class ClientPerformanceService {
         auditService.logChange("Performance", record.getId(), "sales", record.getSales(), request.sales() == null ? 0 : request.sales());
         auditService.logChange("Performance", record.getId(), "revenue", record.getRevenue(), request.revenue() == null ? BigDecimal.ZERO : request.revenue());
         auditService.logChange("Performance", record.getId(), "investment", record.getInvestment(), request.investment() == null ? BigDecimal.ZERO : request.investment());
+        auditService.logChange("Performance", record.getId(), "active", record.isActive(), request.active() == null || request.active());
     }
 }

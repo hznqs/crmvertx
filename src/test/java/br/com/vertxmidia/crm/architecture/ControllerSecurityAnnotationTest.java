@@ -5,6 +5,7 @@ import br.com.vertxmidia.crm.modules.billing.web.BillingController;
 import br.com.vertxmidia.crm.modules.client.web.ClientController;
 import br.com.vertxmidia.crm.modules.client.web.ClientDashboardController;
 import br.com.vertxmidia.crm.modules.dashboard.web.DashboardController;
+import br.com.vertxmidia.crm.modules.leads.web.LeadController;
 import br.com.vertxmidia.crm.modules.operations.web.ClientPerformanceController;
 import br.com.vertxmidia.crm.modules.operations.web.CommissionSaleController;
 import br.com.vertxmidia.crm.modules.operations.web.ContractController;
@@ -14,7 +15,10 @@ import br.com.vertxmidia.crm.modules.operations.web.FinanceEntryController;
 import br.com.vertxmidia.crm.modules.operations.web.GoalController;
 import br.com.vertxmidia.crm.modules.operations.web.TeamMemberController;
 import br.com.vertxmidia.crm.modules.organization.web.OrganizationController;
+import br.com.vertxmidia.crm.modules.projects.web.ProjectController;
+import br.com.vertxmidia.crm.modules.services.web.ServiceOfferingController;
 import br.com.vertxmidia.crm.modules.settings.web.CrmSettingsController;
+import br.com.vertxmidia.crm.modules.tasks.web.TaskController;
 import br.com.vertxmidia.crm.modules.upload.web.UploadController;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -39,6 +43,10 @@ class ControllerSecurityAnnotationTest {
                 ClientController.class,
                 ClientDashboardController.class,
                 DashboardController.class,
+                LeadController.class,
+                ProjectController.class,
+                ServiceOfferingController.class,
+                TaskController.class,
                 ClientPerformanceController.class,
                 CommissionSaleController.class,
                 ContractController.class,
@@ -68,6 +76,10 @@ class ControllerSecurityAnnotationTest {
                 ClientController.class,
                 ClientDashboardController.class,
                 ClientPerformanceController.class,
+                ProjectController.class,
+                ServiceOfferingController.class,
+                TaskController.class,
+                LeadController.class,
                 CommissionSaleController.class,
                 ContractController.class,
                 CrmEventController.class,
@@ -85,7 +97,7 @@ class ControllerSecurityAnnotationTest {
                         .filter(this::isMutatingEndpointMethod)
                         .filter(method -> {
                             PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
-                            return preAuthorize == null || (!preAuthorize.value().contains("ADMIN") && !preAuthorize.value().contains("GESTOR"));
+                            return preAuthorize == null || (!isCentralWritePolicy(preAuthorize) && !isPrivilegedInlinePolicy(preAuthorize));
                         })
                         .map(method -> controller.getSimpleName() + "#" + method.getName()))
                 .toList();
@@ -106,5 +118,14 @@ class ControllerSecurityAnnotationTest {
                 || method.getAnnotation(PutMapping.class) != null
                 || method.getAnnotation(PatchMapping.class) != null
                 || method.getAnnotation(DeleteMapping.class) != null;
+    }
+
+    private boolean isCentralWritePolicy(PreAuthorize preAuthorize) {
+        return preAuthorize.value().contains("@crmPermission.canWrite")
+                || preAuthorize.value().contains("@crmPermission.canManage");
+    }
+
+    private boolean isPrivilegedInlinePolicy(PreAuthorize preAuthorize) {
+        return preAuthorize.value().contains("ADMIN") && preAuthorize.value().contains("GESTOR");
     }
 }

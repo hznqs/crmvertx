@@ -23,6 +23,8 @@ public class CrmEvent extends TimestampedEntity implements OperationResource {
     private UUID id;
     @Column(name = "client_id")
     private UUID clientId;
+    @Column(nullable = false, length = 40)
+    private String type = "REUNIAO";
     @NotBlank
     @Size(max = 180)
     @Column(nullable = false, length = 180)
@@ -41,10 +43,20 @@ public class CrmEvent extends TimestampedEntity implements OperationResource {
     @DecimalMin("0.00")
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal revenue = BigDecimal.ZERO;
+    @Column(columnDefinition = "text")
+    private String notes;
+    @Column(nullable = false)
+    private boolean active = true;
+    @Column(name = "created_by")
+    private UUID createdBy;
+    @Column(name = "updated_by")
+    private UUID updatedBy;
 
     public UUID getId() { return id; }
     public UUID getClientId() { return clientId; }
     public void setClientId(UUID clientId) { this.clientId = clientId; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public LocalDate getDate() { return date; }
@@ -57,4 +69,12 @@ public class CrmEvent extends TimestampedEntity implements OperationResource {
     public void setSale(boolean sale) { this.sale = sale; }
     public BigDecimal getRevenue() { return revenue; }
     public void setRevenue(BigDecimal revenue) { this.revenue = revenue; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public UUID getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
 }

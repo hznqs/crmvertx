@@ -36,7 +36,7 @@ public class FinanceEntryController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'FINANCE')")
     Page<FinanceEntryResponse> search(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
@@ -48,13 +48,13 @@ public class FinanceEntryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'FINANCE')")
     FinanceEntryResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'FINANCE')")
     FinanceSummaryResponse summary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -63,20 +63,20 @@ public class FinanceEntryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'FINANCE')")
     ResponseEntity<FinanceEntryResponse> create(@Valid @RequestBody FinanceEntryRequest request) {
         FinanceEntryResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/finance-entries/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','FINANCEIRO')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'FINANCE')")
     FinanceEntryResponse update(@PathVariable UUID id, @Valid @RequestBody FinanceEntryRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'FINANCE')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

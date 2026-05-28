@@ -36,7 +36,7 @@ public class DeliveryController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL','COMERCIAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DELIVERIES')")
     Page<DeliveryResponse> search(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String owner,
@@ -47,13 +47,13 @@ public class DeliveryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL','COMERCIAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DELIVERIES')")
     DeliveryResponse findById(@PathVariable UUID id) {
         return service.findById(id);
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL','COMERCIAL')")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DELIVERIES')")
     DeliverySummaryResponse summary(
             @RequestParam(required = false) UUID clientId,
             @RequestParam(required = false) String owner
@@ -62,26 +62,26 @@ public class DeliveryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'DELIVERIES')")
     ResponseEntity<DeliveryResponse> create(@Valid @RequestBody DeliveryRequest request) {
         DeliveryResponse response = service.create(request);
         return ResponseEntity.created(URI.create("/api/deliveries/" + response.id())).body(response);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'DELIVERIES')")
     DeliveryResponse update(@PathVariable UUID id, @Valid @RequestBody DeliveryRequest request) {
         return service.update(id, request);
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR','OPERACIONAL')")
+    @PreAuthorize("@crmPermission.canWrite(authentication, 'DELIVERIES')")
     DeliveryResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody DeliveryStatusUpdateRequest request) {
         return service.updateStatus(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTOR')")
+    @PreAuthorize("@crmPermission.canManage(authentication, 'DELIVERIES')")
     ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
