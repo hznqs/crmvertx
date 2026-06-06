@@ -33,7 +33,12 @@ export function LoginForm({ redirectPath }: LoginFormProps) {
     });
 
     if (!response.ok) {
-      setErrorMessage("Nao foi possivel entrar. Verifique email, senha e backend.");
+      const error = await response.json().catch(() => null) as { message?: unknown } | null;
+      setErrorMessage(
+        typeof error?.message === "string" && error.message.trim()
+          ? error.message
+          : "Nao foi possivel entrar. Verifique email, senha e backend."
+      );
       return;
     }
 
