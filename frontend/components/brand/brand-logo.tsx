@@ -62,6 +62,7 @@ export function BrandLogo({
       height={asset.height}
       priority={priority}
       sizes={variant === "full" ? "260px" : "80px"}
+      unoptimized
       className={cn("shrink-0 object-contain", sizeClassName[variant][size], className)}
       onError={() => setFailed(true)}
     />
