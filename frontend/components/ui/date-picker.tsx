@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FloatingLayer } from "@/components/ui/floating-layer";
 import { cn } from "@/lib/utils";
 
 type DatePickerProps = {
@@ -34,7 +35,7 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => selectedDate ?? new Date());
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [popoverPosition, setPopoverPosition] = useState({ left: 16, top: 16 });
+  const [popoverPosition, setPopoverPosition] = useState({ left: 16, top: 16, width: 304, maxHeight: 340 });
   const days = useMemo(() => calendarDays(visibleMonth), [visibleMonth]);
 
   useEffect(() => {
@@ -45,17 +46,22 @@ export function DatePicker({
       if (!trigger) return;
 
       const margin = 12;
-      const popoverWidth = Math.min(320, window.innerWidth - margin * 2);
-      const popoverHeight = 400;
+      const gap = 8;
+      const popoverWidth = Math.min(304, window.innerWidth - margin * 2);
+      const estimatedPopoverHeight = 324;
       const rect = trigger.getBoundingClientRect();
       const preferredLeft = rect.right - popoverWidth;
       const left = clamp(preferredLeft, margin, window.innerWidth - popoverWidth - margin);
-      const preferredTop = rect.bottom + 8;
-      const top = preferredTop + popoverHeight > window.innerHeight - margin
-        ? clamp(rect.top - popoverHeight - 8, margin, window.innerHeight - popoverHeight - margin)
-        : preferredTop;
+      const availableBelow = Math.max(0, window.innerHeight - rect.bottom - gap - margin);
+      const availableAbove = Math.max(0, rect.top - gap - margin);
+      const openBelow = availableBelow >= estimatedPopoverHeight || availableBelow >= availableAbove;
+      const availableHeight = openBelow ? availableBelow : availableAbove;
+      const popoverHeight = Math.min(estimatedPopoverHeight, Math.max(260, availableHeight));
+      const top = openBelow
+        ? rect.bottom + gap
+        : clamp(rect.top - popoverHeight - gap, margin, window.innerHeight - popoverHeight - margin);
 
-      setPopoverPosition({ left, top });
+      setPopoverPosition({ left, top, width: popoverWidth, maxHeight: popoverHeight });
     }
 
     updatePosition();
@@ -77,7 +83,7 @@ export function DatePicker({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative min-w-0", className)}>
       {name ? (
         <input
           name={name}
@@ -106,37 +112,40 @@ export function DatePicker({
         <CalendarDays className="h-4 w-4 text-brand-400 transition group-hover:scale-110" aria-hidden />
       </button>
 
-      {open ? (
-        <>
-          <button
-            type="button"
-            aria-label="Fechar calendario"
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={() => setOpen(false)}
-          />
-          <motion.div
-            role="dialog"
-            aria-label="Selecionar data"
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="crm-popover-surface fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] p-3"
-            style={{ left: popoverPosition.left, top: popoverPosition.top }}
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <button type="button" onClick={() => setVisibleMonth(addMonths(visibleMonth, -1))} className="rounded-crm bg-white/[0.045] p-2 text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus-visible:shadow-focus" aria-label="Mes anterior">
-                <ChevronLeft className="h-4 w-4" aria-hidden />
+      <FloatingLayer>
+        <AnimatePresence>
+          {open ? (
+            <>
+              <button
+                type="button"
+                aria-label="Fechar calendario"
+                className="fixed inset-0 z-40 cursor-default bg-transparent"
+                onClick={() => setOpen(false)}
+              />
+              <motion.div
+              role="dialog"
+              aria-label="Selecionar data"
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
+              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              className="crm-popover-surface fixed z-50 overflow-visible p-2.5"
+              style={{ left: popoverPosition.left, top: popoverPosition.top, width: popoverPosition.width, maxHeight: popoverPosition.maxHeight }}
+            >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <button type="button" onClick={() => setVisibleMonth(addMonths(visibleMonth, -1))} className="grid h-8 w-8 place-items-center rounded-crm border border-line bg-white/[0.045] text-zinc-300 transition duration-premium ease-premium hover:border-brand-400/35 hover:bg-brand-500/15 hover:text-white focus-visible:shadow-focus" aria-label="Mes anterior">
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
               </button>
-              <p className="text-sm font-black capitalize text-white">
+              <p className="min-w-0 truncate rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-center text-sm font-black capitalize text-white">
                 {new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(visibleMonth)}
               </p>
-              <button type="button" onClick={() => setVisibleMonth(addMonths(visibleMonth, 1))} className="rounded-crm bg-white/[0.045] p-2 text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus-visible:shadow-focus" aria-label="Proximo mes">
-                <ChevronRight className="h-4 w-4" aria-hidden />
+              <button type="button" onClick={() => setVisibleMonth(addMonths(visibleMonth, 1))} className="grid h-8 w-8 place-items-center rounded-crm border border-line bg-white/[0.045] text-zinc-300 transition duration-premium ease-premium hover:border-brand-400/35 hover:bg-brand-500/15 hover:text-white focus-visible:shadow-focus" aria-label="Proximo mes">
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </button>
             </div>
 
             <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-black uppercase text-zinc-600">
-              {weekDays.map((day, index) => <span key={`${day}-${index}`} className="py-2">{day}</span>)}
+              {weekDays.map((day, index) => <span key={`${day}-${index}`} className="py-1">{day}</span>)}
             </div>
             <div className="grid grid-cols-7 gap-1">
               {days.map((day) => {
@@ -149,7 +158,7 @@ export function DatePicker({
                     type="button"
                     onClick={() => commit(iso)}
                     className={cn(
-                      "grid h-9 place-items-center rounded-crm text-sm font-bold transition duration-premium ease-premium focus-visible:shadow-focus",
+                      "grid h-8 place-items-center rounded-crm text-[13px] font-bold transition duration-premium ease-premium focus-visible:shadow-focus",
                       day.currentMonth ? "text-zinc-200" : "text-zinc-700",
                       "hover:bg-brand-500/15 hover:text-white",
                       today && "ring-1 ring-brand-400/35",
@@ -161,13 +170,15 @@ export function DatePicker({
                 );
               })}
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
-              <button type="button" onClick={() => commit(toIsoDate(new Date()))} className="crm-menu-item text-center">Hoje</button>
-              <button type="button" onClick={() => commit("")} className="crm-menu-item text-center">Limpar</button>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 border-t border-line pt-2">
+              <button type="button" onClick={() => commit(toIsoDate(new Date()))} className="rounded-crm px-2.5 py-1.5 text-center text-xs font-bold text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus-visible:shadow-focus">Hoje</button>
+              <button type="button" onClick={() => commit("")} className="rounded-crm px-2.5 py-1.5 text-center text-xs font-bold text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus-visible:shadow-focus">Limpar</button>
             </div>
-          </motion.div>
-        </>
-      ) : null}
+              </motion.div>
+            </>
+          ) : null}
+        </AnimatePresence>
+      </FloatingLayer>
     </div>
   );
 }

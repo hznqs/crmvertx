@@ -1,27 +1,59 @@
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader, Section } from "@/components/app/enterprise-page";
+import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { MeetingsChart } from "@/components/dashboard/meetings-chart";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
-import { fetchDashboardMetrics, fetchMeetingsChart, fetchRevenueChart } from "@/lib/api/dashboard";
+import { AnalyticsBarChart } from "@/components/dashboard/analytics-bar-chart";
+import { 
+  fetchDashboardMetrics, 
+  fetchMeetingsChart, 
+  fetchRevenueChart,
+  fetchPipelineFunnel,
+  fetchLeadsOrigin,
+  fetchTopServices,
+  fetchProjectsStatus
+} from "@/lib/api/dashboard";
+import { buildDashboardQuery } from "@/lib/dashboard/query";
+import type { DashboardSearchParams } from "@/lib/types/dashboard";
 import { formatCurrency } from "@/lib/formatters";
+import { chartColors } from "@/lib/theme/chart";
 
-const currentYear = new Date().getFullYear();
-const query = { from: `${currentYear}-01-01`, to: `${currentYear}-12-31` };
+type AnalyticsPageProps = {
+  searchParams: Promise<DashboardSearchParams>;
+};
 
-export default async function AnalyticsPage() {
-  const [metrics, revenue, meetings] = await Promise.all([
+export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const query = buildDashboardQuery(resolvedSearchParams);
+
+  const [
+    metrics, 
+    revenue, 
+    meetings,
+    pipelineFunnel,
+    leadsOrigin,
+    topServices,
+    projectsStatus
+  ] = await Promise.all([
     fetchDashboardMetrics(query),
     fetchRevenueChart(query),
-    fetchMeetingsChart(query)
+    fetchMeetingsChart(query),
+    fetchPipelineFunnel(query),
+    fetchLeadsOrigin(query),
+    fetchTopServices(query),
+    fetchProjectsStatus(query)
   ]);
 
   return (
     <main className="space-y-6">
-      <PageHeader
-        eyebrow="Inteligencia"
-        title="Analytics"
-        description="Leitura executiva de receita, margem, funil comercial e risco operacional para decisoes de crescimento."
-      />
+      <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <PageHeader
+          eyebrow="Relatorios"
+          title="Graficos"
+          description="Visao de receita, contratos, clientes ativos, metas e funil ao longo do tempo."
+        />
+        <DashboardFilters query={query} />
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard tone="brand" label="Receita anual" value={formatCurrency(metrics.monthlyRevenue)} helper={`${revenue.length} pontos de serie`} />
@@ -33,6 +65,13 @@ export default async function AnalyticsPage() {
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         <RevenueChart points={revenue} />
         <MeetingsChart points={meetings} />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <AnalyticsBarChart title="Funil de Vendas" subtitle="Pipeline" points={pipelineFunnel} color={chartColors.brand} />
+        <AnalyticsBarChart title="Origem de Leads" subtitle="Aquisicao" points={leadsOrigin} color={chartColors.primary} />
+        <AnalyticsBarChart title="Servicos mais vendidos" subtitle="Planos" points={topServices} color={chartColors.success} />
+        <AnalyticsBarChart title="Status de Projetos" subtitle="Operacao" points={projectsStatus} color={chartColors.warning} />
       </section>
 
       <Section title="Sinais de performance">

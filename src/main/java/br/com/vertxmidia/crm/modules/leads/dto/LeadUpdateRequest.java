@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record LeadUpdateRequest(
@@ -23,6 +24,10 @@ public record LeadUpdateRequest(
         @NotNull LeadTemperature temperature,
         @NotNull @DecimalMin("0.00") BigDecimal potentialValue,
         UUID responsibleUserId,
+        @Size(max = 160) String responsibleName,
+        @Size(max = 180) String serviceInterest,
+        @Size(max = 240) String nextAction,
+        LocalDate nextActionDate,
         @Size(max = 5000) String notes,
         @NotNull LeadStatus status,
         @NotNull CommercialStage commercialStage,

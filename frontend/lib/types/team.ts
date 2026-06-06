@@ -3,6 +3,8 @@ export type TeamMember = {
   userId: string | null;
   name: string;
   role: string;
+  functionName: string | null;
+  joinedAt: string | null;
   email: string | null;
   phone: string | null;
   tasks: number;
@@ -24,6 +26,7 @@ export type TeamPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type TeamSummary = {
@@ -37,6 +40,7 @@ export type TeamSummary = {
   closer: number;
   developer: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type TeamQuery = {

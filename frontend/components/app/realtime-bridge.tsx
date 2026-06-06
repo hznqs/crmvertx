@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isRealtimeEvent, type RealtimeEvent } from "@/lib/realtime/types";
 import { useRealtimeStore } from "@/lib/store/realtime-store";
@@ -16,6 +17,8 @@ const invalidateByEntity: Record<string, string[]> = {
   "Lancamento financeiro": ["audit", "finance", "dashboard", "billing"],
   Entrega: ["audit", "deliveries", "dashboard"],
   Documento: ["audit", "uploads"],
+  Reuniao: ["audit", "calendar", "dashboard"],
+  Evento: ["audit", "calendar", "dashboard"],
   ServiceOffering: ["audit", "services"],
   Comissao: ["audit", "commissions", "dashboard"],
   Meta: ["audit", "goals", "dashboard"],
@@ -25,13 +28,34 @@ const invalidateByEntity: Record<string, string[]> = {
 
 const defaultActivityKeys = ["audit"];
 const invalidationDelayMs = 350;
+const routeRefreshDelayMs = 500;
+const routeKeyPrefixes: Array<[string, string]> = [
+  ["/analytics", "dashboard"],
+  ["/billing", "billing"],
+  ["/calendar", "calendar"],
+  ["/clients", "clients"],
+  ["/contracts", "contracts"],
+  ["/dashboard", "dashboard"],
+  ["/deliveries", "deliveries"],
+  ["/finance", "finance"],
+  ["/goals", "goals"],
+  ["/leads", "leads"],
+  ["/pipeline", "leads"],
+  ["/projects", "projects"],
+  ["/services", "services"],
+  ["/tasks", "tasks"],
+  ["/team", "team"]
+];
 
 export function RealtimeBridge() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
   const addEvent = useRealtimeStore((state) => state.addEvent);
   const setConnected = useRealtimeStore((state) => state.setConnected);
   const pendingInvalidations = useRef(new Set<string>());
   const invalidationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const routeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const eventSource = new EventSource("/api/realtime/stream");
@@ -70,6 +94,10 @@ export function RealtimeBridge() {
         pendingInvalidations.current.add(key);
       });
 
+      if (shouldRefreshRoute(pathname, keys)) {
+        scheduleRouteRefresh();
+      }
+
       scheduleInvalidationFlush();
     }
 
@@ -89,14 +117,28 @@ export function RealtimeBridge() {
       }, invalidationDelayMs);
     }
 
+    function scheduleRouteRefresh() {
+      if (routeRefreshTimer.current) {
+        return;
+      }
+
+      routeRefreshTimer.current = setTimeout(() => {
+        routeRefreshTimer.current = null;
+        router.refresh();
+      }, routeRefreshDelayMs);
+    }
+
     return () => {
       if (invalidationTimer.current) {
         clearTimeout(invalidationTimer.current);
       }
+      if (routeRefreshTimer.current) {
+        clearTimeout(routeRefreshTimer.current);
+      }
       eventSource.close();
       setConnected(false);
     };
-  }, [addEvent, queryClient, setConnected]);
+  }, [addEvent, pathname, queryClient, router, setConnected]);
 
   return null;
 }
@@ -143,4 +185,9 @@ function keysForActivity(event: RealtimeEvent) {
   }
 
   return event.entity ? (invalidateByEntity[event.entity] ?? defaultActivityKeys) : defaultActivityKeys;
+}
+
+function shouldRefreshRoute(pathname: string, keys: string[]) {
+  const currentRouteKey = routeKeyPrefixes.find(([prefix]) => pathname.startsWith(prefix))?.[1];
+  return currentRouteKey ? keys.includes(currentRouteKey) : false;
 }

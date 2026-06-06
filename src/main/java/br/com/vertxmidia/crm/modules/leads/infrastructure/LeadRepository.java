@@ -36,4 +36,13 @@ public interface LeadRepository extends JpaRepository<Lead, UUID>, JpaSpecificat
 
     @Query("select count(l) from Lead l where l.active = true and l.createdAt >= :since")
     long countActiveCreatedSince(Instant since);
+
+    @Query("select count(l) from Lead l where l.active = true and l.createdAt >= :start and l.createdAt <= :end")
+    long countCreatedBetween(Instant start, Instant end);
+
+    @Query("select new br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString(cast(l.commercialStage as string), count(l)) from Lead l where l.active = true and l.createdAt >= :start and l.createdAt <= :end group by l.commercialStage")
+    java.util.List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> countByCommercialStageBetween(Instant start, Instant end);
+
+    @Query("select new br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString(cast(l.origin as string), count(l)) from Lead l where l.active = true and l.createdAt >= :start and l.createdAt <= :end group by l.origin")
+    java.util.List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> countByOriginBetween(Instant start, Instant end);
 }

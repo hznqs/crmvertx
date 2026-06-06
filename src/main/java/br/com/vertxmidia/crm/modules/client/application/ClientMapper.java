@@ -7,6 +7,7 @@ import br.com.vertxmidia.crm.modules.client.domain.ClientStatus;
 import br.com.vertxmidia.crm.modules.client.domain.DocumentType;
 import br.com.vertxmidia.crm.modules.client.dto.ClientRequest;
 import br.com.vertxmidia.crm.modules.client.dto.ClientResponse;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,14 +22,17 @@ public class ClientMapper {
     public void updateEntity(ClientRequest request, Client client) {
         client.setName(request.name().trim());
         client.setPhase(ClientPhase.from(request.phase()));
-        client.setContractValue(request.value());
-        client.setContractMonths(request.months());
+        client.setContractValue(BigDecimal.ZERO);
+        client.setContractMonths(1);
         client.setContactName(request.contact().trim());
         client.setEmail(normalizeEmail(request.email()));
         client.setPhone(normalizeNullable(request.phone()));
         client.setDocument(normalizeDocument(request.document()));
+        client.setClientType(defaultClientType(request.clientType()));
         client.setDocumentType(defaultDocumentType(request.documentType()));
         client.setSegment(normalizeNullable(request.segment()));
+        client.setOrigin(normalizeNullable(request.origin()));
+        client.setResponsibleName(normalizeNullable(request.responsibleName()));
         client.setStatus(defaultStatus(request.status()));
         client.setPriority(defaultPriority(request.priority()));
         client.setTags(normalizeNullable(request.tags()));
@@ -47,6 +51,10 @@ public class ClientMapper {
         return ClientResponse.from(client);
     }
 
+    public ClientResponse toResponse(Client client, boolean hasActiveContracts, boolean hasContractHistory, java.math.BigDecimal currentMrr) {
+        return ClientResponse.from(client, hasActiveContracts, hasContractHistory, currentMrr);
+    }
+
     private ClientStatus defaultStatus(ClientStatus status) {
         return status == null ? ClientStatus.ATIVO : status;
     }
@@ -57,6 +65,11 @@ public class ClientMapper {
 
     private DocumentType defaultDocumentType(DocumentType documentType) {
         return documentType == null ? DocumentType.NAO_INFORMADO : documentType;
+    }
+
+    private String defaultClientType(String clientType) {
+        String normalized = normalizeNullable(clientType);
+        return normalized == null ? "JURIDICA" : normalized.toUpperCase();
     }
 
     private String normalizeEmail(String value) {

@@ -5,6 +5,7 @@ import { DeliveryDialog } from "@/components/deliveries/delivery-dialog";
 import { DeliveryFormFields } from "@/components/deliveries/delivery-form-fields";
 import { DeliverySubmitButton } from "@/components/deliveries/delivery-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { createDeliveryAction } from "@/lib/deliveries/actions";
 import type { DeliverySelectOption } from "@/lib/types/deliveries";
 
@@ -30,7 +31,7 @@ export function DeliveryCreateButton({
       </button>
       {isOpen ? (
         <DeliveryDialog title="Cadastrar entrega" eyebrow="Pipeline operacional" onClose={() => setIsOpen(false)}>
-          <form action={createDeliveryAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createDeliveryAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <DeliveryFormFields
               clientOptions={clientOptions}
               projectOptions={projectOptions}
@@ -38,7 +39,7 @@ export function DeliveryCreateButton({
               serviceOptions={serviceOptions}
             />
             <DeliveryDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar entrega" />
-          </form>
+          </SafeActionForm>
         </DeliveryDialog>
       ) : null}
     </>

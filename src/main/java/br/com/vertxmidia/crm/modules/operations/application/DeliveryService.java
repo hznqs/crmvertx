@@ -162,6 +162,9 @@ public class DeliveryService {
         delivery.setOwner(request.owner().trim());
         delivery.setDeadline(request.deadline());
         delivery.setStatus(request.status().trim());
+        delivery.setPriority(defaultPriority(request.priority()));
+        delivery.setProgress(request.progress() == null ? 0 : request.progress());
+        delivery.setTags(blankToNull(request.tags()));
         stampStatusTimestamps(delivery, request.status().trim());
         if (request.active() != null) {
             delivery.setActive(request.active());
@@ -179,6 +182,9 @@ public class DeliveryService {
         auditService.logChange("Entrega", delivery.getId(), "owner", delivery.getOwner(), request.owner().trim());
         auditService.logChange("Entrega", delivery.getId(), "deadline", delivery.getDeadline(), request.deadline());
         auditService.logChange("Entrega", delivery.getId(), "status", delivery.getStatus(), request.status().trim());
+        auditService.logChange("Entrega", delivery.getId(), "priority", delivery.getPriority(), defaultPriority(request.priority()));
+        auditService.logChange("Entrega", delivery.getId(), "progress", delivery.getProgress(), request.progress() == null ? 0 : request.progress());
+        auditService.logChange("Entrega", delivery.getId(), "tags", delivery.getTags(), blankToNull(request.tags()));
     }
 
     private void stampStatusTimestamps(Delivery delivery, String status) {
@@ -193,6 +199,10 @@ public class DeliveryService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String defaultPriority(String value) {
+        return value == null || value.isBlank() ? "MEDIA" : value.trim().toUpperCase();
     }
 
     private void applyProjectDelivery(Project project,
@@ -211,6 +221,8 @@ public class DeliveryService {
         delivery.setOwner(delivery.getOwner() == null || delivery.getOwner().isBlank() ? DEFAULT_OWNER : delivery.getOwner());
         delivery.setDeadline(deadline);
         delivery.setStatus(deliveryStatus(project.getStatus(), delivery.getStatus()));
+        delivery.setPriority(project.getPriority() == null ? "MEDIA" : project.getPriority());
+        delivery.setProgress(project.getProgress() == null ? 0 : project.getProgress());
         delivery.setActive(true);
         stampStatusTimestamps(delivery, delivery.getStatus());
     }

@@ -27,6 +27,10 @@ public class LeadMapper {
                 request.temperature(),
                 request.potentialValue(),
                 request.responsibleUserId(),
+                request.responsibleName(),
+                request.serviceInterest(),
+                request.nextAction(),
+                request.nextActionDate(),
                 request.notes()
         );
         lead.setStatus(request.status());
@@ -46,11 +50,16 @@ public class LeadMapper {
                 lead.getTemperature(),
                 lead.getPotentialValue(),
                 lead.getResponsibleUserId(),
+                lead.getResponsibleName(),
+                lead.getServiceInterest(),
+                lead.getNextAction(),
+                lead.getNextActionDate(),
                 lead.getNotes(),
                 lead.getStatus(),
                 lead.getCommercialStage(),
                 lead.getLostReason(),
                 lead.getConvertedAt(),
+                lead.getConvertedClientId(),
                 lead.isActive(),
                 lead.getCreatedBy(),
                 lead.getUpdatedBy(),
@@ -71,6 +80,10 @@ public class LeadMapper {
                 request.temperature(),
                 request.potentialValue(),
                 request.responsibleUserId(),
+                request.responsibleName(),
+                request.serviceInterest(),
+                request.nextAction(),
+                request.nextActionDate(),
                 request.notes()
         );
     }
@@ -85,6 +98,10 @@ public class LeadMapper {
                                    br.com.vertxmidia.crm.modules.leads.domain.LeadTemperature temperature,
                                    java.math.BigDecimal potentialValue,
                                    java.util.UUID responsibleUserId,
+                                   String responsibleName,
+                                   String serviceInterest,
+                                   String nextAction,
+                                   java.time.LocalDate nextActionDate,
                                    String notes) {
         lead.setName(name.trim());
         lead.setCompanyName(normalizeNullable(companyName));
@@ -95,6 +112,10 @@ public class LeadMapper {
         lead.setTemperature(temperature);
         lead.setPotentialValue(potentialValue);
         lead.setResponsibleUserId(responsibleUserId);
+        lead.setResponsibleName(normalizeNullable(responsibleName));
+        lead.setServiceInterest(normalizeNullable(serviceInterest));
+        lead.setNextAction(normalizeNullable(nextAction));
+        lead.setNextActionDate(nextActionDate);
         lead.setNotes(normalizeNullable(notes));
     }
 

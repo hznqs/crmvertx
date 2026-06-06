@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ContentDisposition;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -88,6 +89,12 @@ public class UploadController {
 
         return ResponseEntity.ok()
                 .contentType(mediaType)
+                .contentLength(document.content().length)
+                .cacheControl(attachment
+                        ? CacheControl.noStore()
+                        : CacheControl.maxAge(java.time.Duration.ofHours(24)).cachePublic())
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; script-src 'none'; style-src 'none'; object-src 'none'; sandbox")
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition
                         .filename(document.filename(), java.nio.charset.StandardCharsets.UTF_8)
                         .build()

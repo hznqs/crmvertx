@@ -12,9 +12,6 @@ type ProtectedRoute = {
 
 export const protectedRoutes = [
   { path: "/dashboard", module: "DASHBOARD" },
-  { path: "/activity", module: "AUDIT" },
-  { path: "/operational-dashboard", module: "DASHBOARD" },
-  { path: "/executive-dashboard", module: "DASHBOARD" },
   { path: "/leads", module: "LEADS" },
   { path: "/pipeline", module: "LEADS" },
   { path: "/clients", module: "CLIENTS" },
@@ -28,15 +25,22 @@ export const protectedRoutes = [
   { path: "/commissions", module: "COMMISSIONS" },
   { path: "/finance", module: "FINANCE" },
   { path: "/goals", module: "GOALS" },
-  { path: "/performance", module: "PERFORMANCE" },
   { path: "/billing", module: "BILLING" },
-  { path: "/documents", module: "UPLOADS" },
   { path: "/analytics", module: "DASHBOARD" },
-  { path: "/users", module: "TEAM" },
-  { path: "/notifications", module: "SETTINGS" },
-  { path: "/integrations", module: "SETTINGS" },
   { path: "/settings", module: "SETTINGS" }
 ] satisfies ProtectedRoute[];
+
+const unavailableFrontendPaths = [
+  "/activity",
+  "/operational-dashboard",
+  "/executive-dashboard",
+  "/integrations",
+  "/notifications",
+  "/documents",
+  "/performance",
+  "/users",
+  "/deliveries/kanban"
+] as const;
 
 export function firstReadablePath(role: UserRole | null) {
   return protectedRoutes.find((route) => canReadModule(role, route.module))?.path ?? "/forbidden";
@@ -72,9 +76,20 @@ export function safeInternalPath(path: string | undefined) {
     return "/dashboard";
   }
 
-  if (path.startsWith("/login") || path.startsWith("/api/")) {
+  if (isUnavailableFrontendPath(path)) {
+    return "/dashboard";
+  }
+
+  if (path.startsWith("/login") || path.startsWith("/register") || path.startsWith("/api/")) {
     return "/dashboard";
   }
 
   return path;
+}
+
+export function isUnavailableFrontendPath(pathname: string) {
+  const normalizedPathname = pathname === "/" ? "/dashboard" : pathname;
+  return unavailableFrontendPaths.some((hiddenPath) =>
+    normalizedPathname === hiddenPath || normalizedPathname.startsWith(`${hiddenPath}/`)
+  );
 }

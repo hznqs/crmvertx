@@ -49,12 +49,21 @@ public class Client {
     @Column(length = 32)
     private String document;
 
+    @Column(name = "client_type", nullable = false, length = 20)
+    private String clientType = "JURIDICA";
+
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false, length = 20)
     private DocumentType documentType = DocumentType.NAO_INFORMADO;
 
     @Column(length = 100)
     private String segment;
+
+    @Column(length = 80)
+    private String origin;
+
+    @Column(name = "responsible_name", length = 160)
+    private String responsibleName;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -189,6 +198,14 @@ public class Client {
         this.document = document;
     }
 
+    public String getClientType() {
+        return clientType;
+    }
+
+    public void setClientType(String clientType) {
+        this.clientType = clientType;
+    }
+
     public DocumentType getDocumentType() {
         return documentType;
     }
@@ -203,6 +220,22 @@ public class Client {
 
     public void setSegment(String segment) {
         this.segment = segment;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
+
+    public String getResponsibleName() {
+        return responsibleName;
+    }
+
+    public void setResponsibleName(String responsibleName) {
+        this.responsibleName = responsibleName;
     }
 
     public ClientStatus getStatus() {

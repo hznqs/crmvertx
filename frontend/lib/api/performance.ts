@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toPerformanceSearchParams } from "@/lib/performance/query";
 import type { PerformancePage, PerformanceQuery } from "@/lib/types/performance";
 
@@ -32,7 +33,7 @@ export async function fetchPerformanceRecords(query: PerformanceQuery): Promise<
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar performance");
+    return { ...emptyPerformancePage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar performance") };
   }
 
   return response.json();

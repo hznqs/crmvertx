@@ -1,11 +1,14 @@
 package br.com.vertxmidia.crm.modules.projects.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.domain.Client;
 import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.application.DeliveryService;
 import br.com.vertxmidia.crm.modules.operations.domain.Contract;
+import br.com.vertxmidia.crm.modules.operations.domain.ContractServiceItem;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractServiceItemRepository;
 import br.com.vertxmidia.crm.modules.projects.domain.Project;
 import br.com.vertxmidia.crm.modules.projects.domain.ProjectStatus;
 import br.com.vertxmidia.crm.modules.projects.dto.ProjectFilterRequest;
@@ -40,6 +43,7 @@ public class ProjectService {
     private final ProjectRepository repository;
     private final ClientRepository clientRepository;
     private final ContractRepository contractRepository;
+    private final ContractServiceItemRepository contractServiceItemRepository;
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final DeliveryService deliveryService;
     private final TaskService taskService;
@@ -49,6 +53,7 @@ public class ProjectService {
     public ProjectService(ProjectRepository repository,
                           ClientRepository clientRepository,
                           ContractRepository contractRepository,
+                          ContractServiceItemRepository contractServiceItemRepository,
                           ServiceOfferingRepository serviceOfferingRepository,
                           DeliveryService deliveryService,
                           TaskService taskService,
@@ -57,6 +62,7 @@ public class ProjectService {
         this.repository = repository;
         this.clientRepository = clientRepository;
         this.contractRepository = contractRepository;
+        this.contractServiceItemRepository = contractServiceItemRepository;
         this.serviceOfferingRepository = serviceOfferingRepository;
         this.deliveryService = deliveryService;
         this.taskService = taskService;
@@ -66,7 +72,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public Page<ProjectResponse> search(ProjectFilterRequest filter, Pageable pageable) {
-        return repository.findAll(ProjectSpecifications.byFilters(filter), pageable)
+        return repository.findAll(ProjectSpecifications.byFilters(withDefaultActiveFilter(filter)), pageable)
                 .map(mapper::toResponse);
     }
 
@@ -144,31 +150,50 @@ public class ProjectService {
     @CacheEvict(value = "dashboardMetrics", allEntries = true)
     public Optional<ProjectResponse> syncContractProject(Contract contract) {
         Optional<Project> currentProject = repository.findFirstByContractIdAndActiveTrue(contract.getId());
-
-        if (!isProjectGeneratingContract(contract)) {
-            currentProject.ifPresent(this::cancelAutomaticProject);
+        if (currentProject.isEmpty() || !isProjectGeneratingContract(contract)) {
             return Optional.empty();
         }
 
-        ProjectRequest request = automaticProjectRequest(contract, currentProject.orElse(null));
-        if (currentProject.isPresent()) {
-            Project project = currentProject.get();
-            auditChanges(project, request);
-            mapper.updateEntity(request, project);
-            project.setUpdatedBy(currentUserId());
-            Project saved = repository.save(project);
-            syncProjectOperations(saved);
-            auditService.log("UPDATE_CONTRACT_PROJECT", "Project", saved.getId());
-            return Optional.of(mapper.toResponse(saved));
+        Project project = currentProject.get();
+        List<ContractServiceItem> items = contractServiceItemRepository.findByContractIdAndActiveTrueOrderByCreatedAtAsc(contract.getId());
+        ProjectRequest request = automaticProjectRequest(contract, project, items);
+        auditChanges(project, request);
+        mapper.updateEntity(request, project);
+        project.setUpdatedBy(currentUserId());
+        Project saved = repository.save(project);
+        syncProjectOperations(saved);
+        auditService.log("UPDATE_CONTRACT_PROJECT", "Project", saved.getId());
+        return Optional.of(mapper.toResponse(saved));
+    }
+
+    @Transactional
+    @CacheEvict(value = "dashboardMetrics", allEntries = true)
+    public ProjectResponse generateProjectFromContract(Contract contract, List<ContractServiceItem> serviceItems) {
+        if (!isProjectGeneratingContract(contract)) {
+            throw new IllegalArgumentException("Somente contratos ativos ou concluidos com cliente vinculado podem gerar projeto operacional");
         }
 
+        Optional<Project> currentProject = repository.findFirstByContractIdAndActiveTrue(contract.getId());
+        if (currentProject.isPresent()) {
+            return mapper.toResponse(currentProject.get());
+        }
+
+        List<ContractServiceItem> items = serviceItems == null || serviceItems.isEmpty()
+                ? contractServiceItemRepository.findByContractIdAndActiveTrueOrderByCreatedAtAsc(contract.getId())
+                : serviceItems;
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("Contrato precisa ter servicos contratados para gerar projeto operacional");
+        }
+
+        ProjectRequest request = automaticProjectRequest(contract, null, items);
         Project project = mapper.toEntity(request);
         project.setCreatedBy(currentUserId());
         project.setUpdatedBy(currentUserId());
         Project saved = repository.save(project);
-        syncProjectOperations(saved);
+        syncProjectDeliveries(saved);
+        taskService.createContractProjectTasks(saved, contract, items);
         auditService.log("CREATE_CONTRACT_PROJECT", "Project", saved.getId());
-        return Optional.of(mapper.toResponse(saved));
+        return mapper.toResponse(saved);
     }
 
     private Project getActiveProject(UUID id) {
@@ -188,41 +213,36 @@ public class ProjectService {
         }
     }
 
-    private void cancelAutomaticProject(Project project) {
-        if (project.getStatus() == ProjectStatus.FINALIZADO) {
-            return;
-        }
-        auditService.logChange("Project", project.getId(), "status", project.getStatus(), ProjectStatus.CANCELADO);
-        auditService.logChange("Project", project.getId(), "active", project.isActive(), false);
-        project.setStatus(ProjectStatus.CANCELADO);
-        project.setActive(false);
-        project.setUpdatedBy(currentUserId());
-        Project saved = repository.save(project);
-        syncProjectOperations(saved);
-        auditService.log("CANCEL_CONTRACT_PROJECT", "Project", saved.getId());
+    private void syncProjectOperations(Project project) {
+        List<DeliveryResponse> deliveries = syncProjectDeliveries(project);
+        Optional<ServiceOffering> service = project.getServiceId() == null
+                ? Optional.empty()
+                : serviceOfferingRepository.findByIdAndActiveTrue(project.getServiceId());
+        taskService.syncProjectTasks(project, deliveries, service);
     }
 
-    private void syncProjectOperations(Project project) {
+    private List<DeliveryResponse> syncProjectDeliveries(Project project) {
         Optional<ServiceOffering> service = project.getServiceId() == null
                 ? Optional.empty()
                 : serviceOfferingRepository.findByIdAndActiveTrue(project.getServiceId());
         List<DeliveryResponse> deliveries = deliveryService.syncProjectDeliveries(project, service);
         if (deliveries == null) {
-            deliveries = List.of();
+            return List.of();
         }
-        taskService.syncProjectTasks(project, deliveries, service);
+        return deliveries;
     }
 
     private boolean isProjectGeneratingContract(Contract contract) {
         return contract.isActive()
-                && "ativo".equalsIgnoreCase(contract.getStatus())
+                && ("ativo".equalsIgnoreCase(contract.getStatus()) || "concluido".equalsIgnoreCase(contract.getStatus()))
                 && contract.getClientId() != null;
     }
 
-    private ProjectRequest automaticProjectRequest(Contract contract, Project currentProject) {
-        Optional<ServiceOffering> service = contract.getServiceId() == null
+    private ProjectRequest automaticProjectRequest(Contract contract, Project currentProject, List<ContractServiceItem> items) {
+        UUID primaryServiceId = items == null || items.isEmpty() ? contract.getServiceId() : items.get(0).getServiceId();
+        Optional<ServiceOffering> service = primaryServiceId == null
                 ? Optional.empty()
-                : serviceOfferingRepository.findByIdAndActiveTrue(contract.getServiceId());
+                : serviceOfferingRepository.findByIdAndActiveTrue(primaryServiceId);
         BigDecimal budget = projectBudget(contract, service);
         LocalDate slaDueDate = projectSlaDueDate(contract, service);
         ProjectStatus status = currentProject == null ? ProjectStatus.PLANEJAMENTO : currentProject.getStatus();
@@ -231,12 +251,14 @@ public class ProjectService {
         return new ProjectRequest(
                 contract.getClientId(),
                 contract.getId(),
-                service.map(ServiceOffering::getId).orElse(null),
-                projectName(contract, service),
-                projectDescription(contract, service),
+                primaryServiceId,
+                projectName(contract, items),
+                projectDescription(contract, service, items),
                 status,
                 currentProject == null ? null : currentProject.getResponsibleUserId(),
                 currentProject == null ? null : currentProject.getTeamMemberIds(),
+                currentProject == null ? contract.getStartDate() : currentProject.getStartDate(),
+                currentProject == null ? "MEDIA" : currentProject.getPriority(),
                 progress,
                 slaDueDate,
                 budget,
@@ -247,18 +269,39 @@ public class ProjectService {
     }
 
     private String projectName(Contract contract, Optional<ServiceOffering> service) {
-        return service
-                .map(item -> item.getName() + " - " + contract.getPlan())
-                .orElse("Projeto - " + contract.getPlan());
+        return projectName(contract, List.of());
     }
 
-    private String projectDescription(Contract contract, Optional<ServiceOffering> service) {
+    private String projectName(Contract contract, List<ContractServiceItem> items) {
+        String clientName = clientRepository.findByIdAndActiveTrue(contract.getClientId())
+                .map(Client::getName)
+                .orElse("Cliente");
+        String serviceLabel = items == null || items.isEmpty()
+                ? contract.getPlan()
+                : items.stream()
+                        .map(ContractServiceItem::getServiceNameSnapshot)
+                        .filter(name -> name != null && !name.isBlank())
+                        .limit(2)
+                        .reduce((first, second) -> first + " + " + second)
+                        .orElse(contract.getPlan());
+        return "Projeto - " + clientName + " - " + serviceLabel;
+    }
+
+    private String projectDescription(Contract contract, Optional<ServiceOffering> service, List<ContractServiceItem> items) {
         String serviceDescription = service.map(ServiceOffering::getDescription).orElse(null);
         String deliveryStages = service.map(ServiceOffering::getDeliveryStages).orElse(null);
         String defaultChecklist = service.map(ServiceOffering::getDefaultChecklist).orElse(null);
-        StringBuilder description = new StringBuilder("Projeto criado automaticamente a partir do contrato ")
+        String services = items == null || items.isEmpty()
+                ? "Servico principal do contrato."
+                : items.stream()
+                        .map(ContractServiceItem::getServiceNameSnapshot)
+                        .filter(name -> name != null && !name.isBlank())
+                        .reduce((first, second) -> first + ", " + second)
+                        .orElse("Servicos contratados.");
+        StringBuilder description = new StringBuilder("Projeto operacional gerado a partir do contrato ")
                 .append(contract.getId())
-                .append(".");
+                .append(".\n\nServicos contratados: ")
+                .append(services);
 
         return serviceDescription == null || serviceDescription.isBlank()
                 ? appendOperationalTemplate(description, deliveryStages, defaultChecklist)
@@ -333,12 +376,30 @@ public class ProjectService {
         auditService.logChange("Project", project.getId(), "name", project.getName(), request.name().trim());
         auditService.logChange("Project", project.getId(), "status", project.getStatus(), request.status());
         auditService.logChange("Project", project.getId(), "responsibleUserId", project.getResponsibleUserId(), request.responsibleUserId());
+        auditService.logChange("Project", project.getId(), "startDate", project.getStartDate(), request.startDate());
+        auditService.logChange("Project", project.getId(), "priority", project.getPriority(), request.priority() == null ? "MEDIA" : request.priority().trim().toUpperCase());
         auditService.logChange("Project", project.getId(), "progress", project.getProgress(), request.progress());
         auditService.logChange("Project", project.getId(), "slaDueDate", project.getSlaDueDate(), request.slaDueDate());
         auditService.logChange("Project", project.getId(), "budget", project.getBudget(), request.budget());
         auditService.logChange("Project", project.getId(), "estimatedCost", project.getEstimatedCost(), request.estimatedCost());
         auditService.logChange("Project", project.getId(), "actualCost", project.getActualCost(), request.actualCost());
         auditService.logChange("Project", project.getId(), "active", project.isActive(), request.active() == null || request.active());
+    }
+
+    private ProjectFilterRequest withDefaultActiveFilter(ProjectFilterRequest filter) {
+        return new ProjectFilterRequest(
+                filter.search(),
+                filter.clientId(),
+                filter.contractId(),
+                filter.serviceId(),
+                filter.status(),
+                filter.responsibleUserId(),
+                filter.slaFrom(),
+                filter.slaTo(),
+                filter.active() == null ? true : filter.active(),
+                filter.createdFrom(),
+                filter.createdTo()
+        );
     }
 
     private UUID currentUserId() {

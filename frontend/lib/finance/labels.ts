@@ -10,7 +10,8 @@ export const financeTypeLabels: Record<FinanceEntryType, string> = {
 export const financeStatusLabels: Record<FinanceEntryStatus, string> = {
   pago: "Pago",
   pendente: "Pendente",
-  vencido: "Vencido"
+  vencido: "Vencido",
+  cancelado: "Cancelado"
 };
 
 export const costCenterLabels: Record<CostCenter, string> = {
@@ -32,5 +33,6 @@ export const financeTypeTone: Record<FinanceEntryType, string> = {
 export const financeStatusTone: Record<FinanceEntryStatus, string> = {
   pago: "bg-emerald-500/12 text-emerald-100 ring-emerald-500/20",
   pendente: "bg-amber-500/12 text-amber-100 ring-amber-500/20",
-  vencido: "bg-rose-500/12 text-rose-100 ring-rose-500/20"
+  vencido: "bg-rose-500/12 text-rose-100 ring-rose-500/20",
+  cancelado: "bg-zinc-500/12 text-zinc-200 ring-zinc-500/20"
 };

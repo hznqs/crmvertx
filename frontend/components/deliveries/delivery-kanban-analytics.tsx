@@ -1,10 +1,12 @@
 "use client";
 
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { deliveryKanbanStatuses, normalizeDeliveryStatus } from "@/lib/deliveries/kanban";
 import { deliveryStatusLabels } from "@/lib/deliveries/labels";
-import { chartColors, chartTooltipStyle } from "@/lib/theme/chart";
+import { chartColors } from "@/lib/theme/chart";
 import type { Delivery } from "@/lib/types/deliveries";
+import { ChartFrame } from "@/components/ui/chart-frame";
+import { ChartCard, ChartEmptyState, PremiumChartTooltip } from "@/components/ui/premium-chart";
 
 type DeliveryKanbanAnalyticsProps = {
   deliveries: Delivery[];
@@ -15,31 +17,34 @@ export function DeliveryKanbanAnalytics({ deliveries }: DeliveryKanbanAnalyticsP
     status: deliveryStatusLabels[status],
     total: deliveries.filter((delivery) => normalizeDeliveryStatus(delivery.status) === status).length
   }));
+  const hasData = chartData.some((item) => item.total > 0);
 
   return (
-    <section className="crm-surface p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-400">Analytics operacional</p>
-          <h2 className="mt-1 text-lg font-black text-white">Distribuicao por etapa</h2>
-        </div>
-        <span className="rounded-full bg-brand-500/15 px-3 py-1 text-xs font-black text-fuchsia-100">
-          {deliveries.length} cards
-        </span>
-      </div>
-      <div className="mt-5 h-52">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ left: -24, right: 8, top: 8, bottom: 0 }}>
-            <XAxis dataKey="status" tick={{ fill: chartColors.muted, fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
+    <ChartCard
+      eyebrow="Analytics operacional"
+      title="Distribuicao por etapa"
+      subtitle="Leitura rapida da carga de trabalho no fluxo de entregas."
+      metric={String(deliveries.length)}
+      badge="cards"
+    >
+      <ChartFrame className="mt-6 h-56 min-h-56 min-w-0 overflow-hidden rounded-xl border border-brand-400/10 bg-[#090909]/30 p-3">
+        {hasData ? (
+          ({ width, height }) => (
+          <BarChart width={width} height={height} data={chartData} margin={{ left: -16, right: 8, top: 12, bottom: 0 }}>
+            <CartesianGrid stroke={chartColors.grid} vertical={false} strokeDasharray="4 8" />
+            <XAxis dataKey="status" tick={{ fill: chartColors.muted, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
             <YAxis tick={{ fill: chartColors.muted, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
             <Tooltip
               cursor={{ fill: chartColors.cursor }}
-              contentStyle={chartTooltipStyle}
+              content={<PremiumChartTooltip />}
             />
-            <Bar dataKey="total" fill={chartColors.brand} radius={[8, 8, 0, 0]} />
+            <Bar dataKey="total" name="Entregas" fill={chartColors.brand} radius={[10, 10, 0, 0]} maxBarSize={42} />
           </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </section>
+          )
+        ) : (
+          () => <ChartEmptyState title="Sem entregas por etapa" description="Quando houver cards no kanban, a distribuicao operacional aparecera aqui." />
+        )}
+      </ChartFrame>
+    </ChartCard>
   );
 }

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
 import type { CostCenter, FinanceEntryStatus, FinanceEntryType } from "@/lib/types/finance";
 
 type FinancePayload = {
@@ -17,24 +19,32 @@ type FinancePayload = {
   recurring: boolean;
   autoBilling: boolean;
   costCenter: CostCenter;
+  paymentMethod: string;
+  notes: string;
   active: boolean;
 };
 
-export async function createFinanceEntryAction(formData: FormData) {
-  await mutateFinanceBackend("/api/finance-entries", "POST", financePayloadFromForm(formData));
-  revalidatePath("/finance");
+export async function createFinanceEntryAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateFinanceBackend("/api/finance-entries", "POST", financePayloadFromForm(formData));
+    revalidatePath("/finance");
+  }, "Nao foi possivel salvar o lancamento");
 }
 
-export async function updateFinanceEntryAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateFinanceBackend(`/api/finance-entries/${encodeURIComponent(id)}`, "PUT", financePayloadFromForm(formData));
-  revalidatePath("/finance");
+export async function updateFinanceEntryAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateFinanceBackend(`/api/finance-entries/${encodeURIComponent(id)}`, "PUT", financePayloadFromForm(formData));
+    revalidatePath("/finance");
+  }, "Nao foi possivel salvar o lancamento");
 }
 
-export async function deleteFinanceEntryAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateFinanceBackend(`/api/finance-entries/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/finance");
+export async function deleteFinanceEntryAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateFinanceBackend(`/api/finance-entries/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/finance");
+  }, "Nao foi possivel excluir o lancamento");
 }
 
 function financePayloadFromForm(formData: FormData): FinancePayload {
@@ -51,6 +61,8 @@ function financePayloadFromForm(formData: FormData): FinancePayload {
     recurring: formData.get("recurring") === "true",
     autoBilling: formData.get("autoBilling") === "true",
     costCenter: requiredString(formData.get("costCenter")) as CostCenter,
+    paymentMethod: stringFromForm(formData.get("paymentMethod")),
+    notes: stringFromForm(formData.get("notes")),
     active: formData.get("active") !== "false"
   };
 }
@@ -97,5 +109,5 @@ function stringFromForm(value: FormDataEntryValue | null) {
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }

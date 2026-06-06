@@ -11,6 +11,7 @@ public record ServiceOfferingResponse(
         String name,
         ServiceCategory category,
         String description,
+        String notes,
         ServiceBillingType billingType,
         BigDecimal basePrice,
         Integer slaDays,

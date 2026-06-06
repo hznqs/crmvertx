@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toFinanceSearchParams } from "@/lib/finance/query";
 import type { FinanceEntryPage, FinanceQuery, FinanceSummary } from "@/lib/types/finance";
 
@@ -37,7 +38,7 @@ export async function fetchFinanceEntries(query: FinanceQuery): Promise<FinanceE
       cache: "no-store"
     });
   } catch {
-    return { ...emptyFinancePage, sourceUnavailable: true };
+    return { ...emptyFinancePage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -45,7 +46,7 @@ export async function fetchFinanceEntries(query: FinanceQuery): Promise<FinanceE
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar financeiro");
+    return { ...emptyFinancePage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar financeiro") };
   }
 
   return response.json();
@@ -67,7 +68,7 @@ export async function fetchFinanceSummary(query: Pick<FinanceQuery, "from" | "to
       cache: "no-store"
     });
   } catch {
-    return { ...emptyFinanceSummary, sourceUnavailable: true };
+    return { ...emptyFinanceSummary, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -75,7 +76,7 @@ export async function fetchFinanceSummary(query: Pick<FinanceQuery, "from" | "to
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar resumo financeiro");
+    return { ...emptyFinanceSummary, loadError: await backendErrorMessage(response, "Nao foi possivel carregar resumo financeiro") };
   }
 
   return response.json();

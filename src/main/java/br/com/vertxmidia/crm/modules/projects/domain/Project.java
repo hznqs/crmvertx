@@ -68,6 +68,12 @@ public class Project extends TimestampedEntity {
     @Column(name = "team_member_ids", columnDefinition = "text")
     private String teamMemberIds;
 
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(nullable = false, length = 30)
+    private String priority = "MEDIA";
+
     @Min(0)
     @Max(100)
     @Column(nullable = false)
@@ -163,6 +169,22 @@ public class Project extends TimestampedEntity {
 
     public void setTeamMemberIds(String teamMemberIds) {
         this.teamMemberIds = teamMemberIds;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
     }
 
     public Integer getProgress() {

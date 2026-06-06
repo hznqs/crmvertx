@@ -38,14 +38,11 @@ export function TaskFormFields({ task, projectOptions }: TaskFormFieldsProps) {
         </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Entrega">
-          <input name="deliveryId" defaultValue={task?.deliveryId ?? ""} placeholder="UUID opcional" className={inputClassName} />
-        </Field>
-        <Field label="Responsavel">
-          <input name="responsibleUserId" defaultValue={task?.responsibleUserId ?? ""} placeholder="UUID opcional" className={inputClassName} />
-        </Field>
-      </div>
+      <input type="hidden" name="deliveryId" value={task?.deliveryId ?? ""} />
+      <input type="hidden" name="clientId" value={task?.clientId ?? ""} />
+      <input type="hidden" name="contractId" value={task?.contractId ?? ""} />
+      <input type="hidden" name="serviceId" value={task?.serviceId ?? ""} />
+      <input type="hidden" name="responsibleUserId" value={task?.responsibleUserId ?? ""} />
 
       <Field label="Descricao">
         <textarea
@@ -54,6 +51,24 @@ export function TaskFormFields({ task, projectOptions }: TaskFormFieldsProps) {
           className={`${inputClassName} min-h-28 py-3`}
         />
       </Field>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Checklist">
+          <textarea
+            name="checklist"
+            defaultValue={task?.checklist ?? ""}
+            className={`${inputClassName} min-h-24 py-3`}
+            placeholder="Itens separados por linha"
+          />
+        </Field>
+        <Field label="Comentarios">
+          <textarea
+            name="comments"
+            defaultValue={task?.comments ?? ""}
+            className={`${inputClassName} min-h-24 py-3`}
+          />
+        </Field>
+      </div>
     </div>
   );
 }

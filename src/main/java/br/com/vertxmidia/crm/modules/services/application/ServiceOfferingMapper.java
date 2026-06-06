@@ -20,6 +20,7 @@ public class ServiceOfferingMapper {
         service.setName(request.name().trim());
         service.setCategory(request.category());
         service.setDescription(normalizeNullable(request.description()));
+        service.setNotes(normalizeNullable(request.notes()));
         service.setBillingType(request.billingType());
         service.setBasePrice(defaultNumber(request.basePrice()));
         service.setSlaDays(request.slaDays());
@@ -39,6 +40,7 @@ public class ServiceOfferingMapper {
                 service.getName(),
                 service.getCategory(),
                 service.getDescription(),
+                service.getNotes(),
                 service.getBillingType(),
                 service.getBasePrice(),
                 service.getSlaDays(),

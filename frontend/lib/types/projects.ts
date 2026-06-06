@@ -7,6 +7,8 @@ export type ProjectStatus =
   | "PAUSADO"
   | "CANCELADO";
 
+export type ProjectPriority = "BAIXA" | "MEDIA" | "ALTA" | "URGENTE";
+
 export type Project = {
   id: string;
   clientId: string;
@@ -17,6 +19,8 @@ export type Project = {
   status: ProjectStatus;
   responsibleUserId: string | null;
   teamMemberIds: string | null;
+  startDate: string | null;
+  priority: ProjectPriority;
   progress: number;
   slaDueDate: string | null;
   budget: number | string;
@@ -36,6 +40,7 @@ export type ProjectPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type ProjectQuery = {

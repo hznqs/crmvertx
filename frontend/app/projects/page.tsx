@@ -29,6 +29,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
   ]);
   const clientOptions = clientPage.content.map(toClientOption);
   const serviceOptions = servicePage.content.map(toServiceOption);
+  const loadError = projectPage.loadError ?? clientPage.loadError ?? servicePage.loadError;
 
   return (
     <main className="space-y-6">
@@ -52,10 +53,9 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
 
       <ProjectMetrics projects={projectPage.content} totalElements={projectPage.totalElements} />
 
-      {projectPage.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar os projetos reais.
+          {loadError}
         </div>
       ) : null}
 

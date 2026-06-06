@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { buildMonthRange } from "@/lib/calendar/date-utils";
+import { backendErrorMessage } from "@/lib/api/backend";
+import { buildCalendarRange } from "@/lib/calendar/date-utils";
 import type { CalendarEventPage, CalendarQuery } from "@/lib/types/calendar";
 
 const emptyEventPage: CalendarEventPage = {
@@ -12,7 +13,7 @@ const emptyEventPage: CalendarEventPage = {
 
 export async function fetchCalendarEvents(query: CalendarQuery): Promise<CalendarEventPage> {
   const apiBaseUrl = process.env.CRM_API_BASE_URL ?? "http://localhost:8080";
-  const { from, to } = buildMonthRange(query.month);
+  const { from, to } = buildCalendarRange(query.view, query.date, query.month);
   const params = new URLSearchParams({
     from,
     to,
@@ -22,6 +23,38 @@ export async function fetchCalendarEvents(query: CalendarQuery): Promise<Calenda
 
   if (query.status) {
     params.set("status", query.status);
+  }
+
+  if (query.type) {
+    params.set("type", query.type);
+  }
+
+  if (query.clientId) {
+    params.set("clientId", query.clientId);
+  }
+
+  if (query.leadId) {
+    params.set("leadId", query.leadId);
+  }
+
+  if (query.projectId) {
+    params.set("projectId", query.projectId);
+  }
+
+  if (query.contractId) {
+    params.set("contractId", query.contractId);
+  }
+
+  if (query.taskId) {
+    params.set("taskId", query.taskId);
+  }
+
+  if (query.responsible) {
+    params.set("responsible", query.responsible);
+  }
+
+  if (query.priority) {
+    params.set("priority", query.priority);
   }
 
   const cookieStore = await cookies();
@@ -37,7 +70,8 @@ export async function fetchCalendarEvents(query: CalendarQuery): Promise<Calenda
   } catch {
     return {
       ...emptyEventPage,
-      sourceUnavailable: true
+      sourceUnavailable: true,
+      loadError: "Backend indisponivel em http://localhost:8080."
     };
   }
 
@@ -46,17 +80,8 @@ export async function fetchCalendarEvents(query: CalendarQuery): Promise<Calenda
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar agenda");
+    return { ...emptyEventPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar agenda") };
   }
 
-  const eventPage = (await response.json()) as CalendarEventPage;
-  const content = query.type
-    ? eventPage.content.filter((event) => event.type === query.type)
-    : eventPage.content;
-
-  return {
-    ...eventPage,
-    content,
-    totalElements: content.length
-  };
+  return (await response.json()) as CalendarEventPage;
 }

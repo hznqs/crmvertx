@@ -27,6 +27,8 @@ public record FinanceEntryRequest(
         boolean autoBilling,
         @Pattern(regexp = "^(operacional|vendas|marketing|desenvolvimento|administrativo|ferramentas)$", message = "Centro de custo invalido")
         String costCenter,
+        @Size(max = 80) String paymentMethod,
+        @Size(max = 10000) String notes,
         Boolean active
 ) {
 }

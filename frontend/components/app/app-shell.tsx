@@ -3,12 +3,14 @@
 import { AppNavigation } from "@/components/app/app-navigation";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
-import { Bell, Command, LogOut, Search } from "lucide-react";
+import { Command, LogOut, Menu, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SessionUser } from "@/lib/auth/session";
 import { useUiStore } from "@/lib/store/ui-store";
+import { cn } from "@/lib/utils";
 
 type AppShellProps = Readonly<{
   children: React.ReactNode;
@@ -18,9 +20,13 @@ type AppShellProps = Readonly<{
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const setCommandOpen = useUiStore((state) => state.setCommandOpen);
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/register") {
     return children;
   }
 
@@ -31,28 +37,124 @@ export function AppShell({ children, user }: AppShellProps) {
     router.refresh();
   }
 
+  function clearSidebarHoverTimer() {
+    if (sidebarHoverTimerRef.current) {
+      clearTimeout(sidebarHoverTimerRef.current);
+      sidebarHoverTimerRef.current = null;
+    }
+  }
+
+  function scheduleSidebarExpand() {
+    clearSidebarHoverTimer();
+    sidebarHoverTimerRef.current = setTimeout(() => setIsSidebarExpanded(true), 120);
+  }
+
+  function collapseSidebar() {
+    clearSidebarHoverTimer();
+    setIsSidebarExpanded(false);
+  }
+
+  function collapseSidebarWhenFocusLeaves(event: React.FocusEvent<HTMLElement>) {
+    const nextFocusedElement = event.relatedTarget;
+    if (nextFocusedElement instanceof Node && sidebarRef.current?.contains(nextFocusedElement)) {
+      return;
+    }
+
+    collapseSidebar();
+  }
+
   return (
-    <div className="min-h-screen bg-ink text-white">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-brand-400/10 bg-[#090909] p-4 shadow-[18px_0_80px_rgba(0,0,0,.34)] lg:block">
-        <Link href="/dashboard" className="mb-7 inline-flex h-16 items-center px-1">
-          <BrandLogo variant="full" size="lg" className="h-14 w-60" priority />
+    <div className="min-h-screen overflow-x-clip bg-ink text-white">
+      <aside
+        ref={sidebarRef}
+        aria-label="Navegacao principal"
+        onMouseEnter={scheduleSidebarExpand}
+        onMouseLeave={collapseSidebar}
+        onFocusCapture={() => setIsSidebarExpanded(true)}
+        onBlurCapture={collapseSidebarWhenFocusLeaves}
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden overflow-visible border-r border-brand-400/10 bg-[#090909] shadow-[18px_0_80px_rgba(0,0,0,.34)] transition-[width,padding] duration-300 ease-in-out lg:block",
+          isSidebarExpanded ? "w-72 p-4" : "w-[88px] px-3 py-4"
+        )}
+      >
+        <Link
+          href="/dashboard"
+          aria-label="Ir para o dashboard"
+          className={cn(
+            "mb-7 flex h-16 min-w-0 items-center overflow-hidden rounded-2xl outline-none transition-all duration-300 ease-in-out focus-visible:shadow-focus",
+            isSidebarExpanded ? "justify-start px-1" : "justify-center px-0"
+          )}
+        >
+          {isSidebarExpanded ? (
+            <BrandLogo variant="full" size="lg" className="h-14 w-60" priority />
+          ) : (
+            <BrandLogo variant="mark" size="lg" className="h-14 w-14" priority />
+          )}
         </Link>
 
-        <AppNavigation role={user?.role ?? null} />
+        <AppNavigation role={user?.role ?? null} expanded={isSidebarExpanded} />
       </aside>
 
-      <div className="lg:pl-72">
+      {isMobileSidebarOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Fechar menu lateral"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          <aside className="relative h-full w-[min(86vw,320px)] border-r border-brand-400/15 bg-[#090909] p-4 shadow-[24px_0_80px_rgba(0,0,0,.55)]">
+            <div className="flex items-center justify-between gap-3">
+              <Link
+                href="/dashboard"
+                aria-label="Ir para o dashboard"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="inline-flex h-14 min-w-0 items-center"
+              >
+                <BrandLogo variant="full" size="md" className="h-12 w-44" priority />
+              </Link>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                aria-label="Fechar menu lateral"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+            <AppNavigation role={user?.role ?? null} onNavigate={() => setIsMobileSidebarOpen(false)} expanded />
+          </aside>
+        </div>
+      ) : null}
+
+      <div
+        className={cn(
+          "min-w-0 transition-[padding] duration-300 ease-in-out",
+          isSidebarExpanded ? "lg:pl-72" : "lg:pl-[88px]"
+        )}
+      >
         <header className="sticky top-0 z-20 border-b border-brand-400/10 bg-[#090909]/88 px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,.22)] backdrop-blur-xl md:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <BrandLogo variant="mark" size="sm" className="hidden md:inline-flex h-10 w-10" />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                aria-label="Abrir menu lateral"
+                className="lg:hidden"
+              >
+                <Menu className="h-4 w-4" aria-hidden />
+              </Button>
+              <BrandLogo variant="mark" size="sm" className="hidden h-10 w-10 md:inline-flex" />
               <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Plataforma operacional
-              </p>
-              <p className="mt-1 text-sm text-zinc-300">
-                CRM, projetos, financeiro e performance
-              </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  CRM Interno
+                </p>
+                <p className="mt-1 text-sm text-zinc-300">
+                  Clientes, projetos, financeiro e equipe
+                </p>
               </div>
             </div>
             <button
@@ -67,15 +169,6 @@ export function AppShell({ children, user }: AppShellProps) {
               </kbd>
             </button>
             <div className="hidden items-center gap-2 md:flex">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => toast.info("Central de notificacoes pronta para realtime.")}
-                aria-label="Abrir notificacoes"
-              >
-                <Bell className="h-4 w-4" aria-hidden />
-              </Button>
               <Button
                 type="button"
                 variant="secondary"
@@ -103,7 +196,7 @@ export function AppShell({ children, user }: AppShellProps) {
           </div>
         </header>
 
-        <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+        <div className="mx-auto min-w-0 max-w-7xl px-4 py-6 md:px-8 md:py-8">
           {children}
         </div>
       </div>

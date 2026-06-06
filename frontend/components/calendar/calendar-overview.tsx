@@ -9,8 +9,10 @@ type CalendarOverviewProps = {
 
 export function CalendarOverview({ events, monthLabel }: CalendarOverviewProps) {
   const scheduledEvents = events.filter((event) => event.status === "agendada").length;
-  const completedEvents = events.filter((event) => event.status === "executada").length;
-  const deliveryEvents = events.filter((event) => event.type === "ENTREGA").length;
+  const completedEvents = events.filter((event) => event.status === "executada" || event.status === "realizada").length;
+  const canceledEvents = events.filter((event) => event.status === "cancelada").length;
+  const overdueEvents = events.filter(isOverdue).length;
+  const reminders = events.filter((event) => event.reminderMinutesBefore !== null && event.status === "agendada").length;
   const revenue = events.reduce(
     (total, event) => total + Number(event.revenue ?? 0),
     0
@@ -18,22 +20,27 @@ export function CalendarOverview({ events, monthLabel }: CalendarOverviewProps) 
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <MetricCard label="Eventos do mes" value={String(events.length)} helper={monthLabel} />
+      <MetricCard label="Reunioes do periodo" value={String(events.length)} helper={monthLabel} />
       <MetricCard
         label="Agendados"
         value={String(scheduledEvents)}
-        helper="Acoes pendentes na agenda"
+        helper="Reunioes pendentes na agenda"
       />
       <MetricCard
-        label="Entregas"
-        value={String(deliveryEvents)}
-        helper="Compromissos operacionais"
+        label="Atrasadas/canceladas"
+        value={`${overdueEvents}/${canceledEvents}`}
+        helper="Risco operacional da agenda"
       />
       <MetricCard
-        label="Receita vinculada"
+        label="Receita/lembretes"
         value={formatCurrency(revenue)}
-        helper={`${completedEvents} eventos executados`}
+        helper={`${completedEvents} executados · ${reminders} lembretes`}
       />
     </section>
   );
+}
+
+function isOverdue(event: CalendarEvent) {
+  const time = (event.startTime ?? event.time ?? "23:59").slice(0, 5);
+  return event.status === "agendada" && new Date(`${event.date}T${time}:00`).getTime() < Date.now();
 }

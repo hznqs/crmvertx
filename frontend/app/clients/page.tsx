@@ -19,6 +19,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const actionPermissions = moduleActionPermissions(user?.role ?? null, "CLIENTS");
   const query = buildClientQuery(resolvedSearchParams);
   const clientPage = await fetchClients(query);
+  const loadError = clientPage.loadError;
 
   return (
     <main className="space-y-6">
@@ -42,10 +43,9 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
       <ClientMetrics clients={clientPage.content} totalElements={clientPage.totalElements} />
 
-      {clientPage.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar os clientes reais.
+          {loadError}
         </div>
       ) : null}
 

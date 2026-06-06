@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -74,6 +75,21 @@ public class Lead extends TimestampedEntity {
     @Column(name = "responsible_user_id")
     private UUID responsibleUserId;
 
+    @Size(max = 160)
+    @Column(name = "responsible_name", length = 160)
+    private String responsibleName;
+
+    @Size(max = 180)
+    @Column(name = "service_interest", length = 180)
+    private String serviceInterest;
+
+    @Size(max = 240)
+    @Column(name = "next_action", length = 240)
+    private String nextAction;
+
+    @Column(name = "next_action_date")
+    private LocalDate nextActionDate;
+
     @Column(columnDefinition = "text")
     private String notes;
 
@@ -93,6 +109,9 @@ public class Lead extends TimestampedEntity {
 
     @Column(name = "converted_at")
     private Instant convertedAt;
+
+    @Column(name = "converted_client_id")
+    private UUID convertedClientId;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -179,6 +198,38 @@ public class Lead extends TimestampedEntity {
         this.responsibleUserId = responsibleUserId;
     }
 
+    public String getResponsibleName() {
+        return responsibleName;
+    }
+
+    public void setResponsibleName(String responsibleName) {
+        this.responsibleName = responsibleName;
+    }
+
+    public String getServiceInterest() {
+        return serviceInterest;
+    }
+
+    public void setServiceInterest(String serviceInterest) {
+        this.serviceInterest = serviceInterest;
+    }
+
+    public String getNextAction() {
+        return nextAction;
+    }
+
+    public void setNextAction(String nextAction) {
+        this.nextAction = nextAction;
+    }
+
+    public LocalDate getNextActionDate() {
+        return nextActionDate;
+    }
+
+    public void setNextActionDate(LocalDate nextActionDate) {
+        this.nextActionDate = nextActionDate;
+    }
+
     public String getNotes() {
         return notes;
     }
@@ -217,6 +268,14 @@ public class Lead extends TimestampedEntity {
 
     public void setConvertedAt(Instant convertedAt) {
         this.convertedAt = convertedAt;
+    }
+
+    public UUID getConvertedClientId() {
+        return convertedClientId;
+    }
+
+    public void setConvertedClientId(UUID convertedClientId) {
+        this.convertedClientId = convertedClientId;
     }
 
     public boolean isActive() {

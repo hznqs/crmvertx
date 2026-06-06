@@ -7,12 +7,15 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record TeamMemberRequest(
         UUID userId,
         @NotBlank @Size(max = 160) String name,
         @NotBlank @Size(max = 80) String role,
+        @Size(max = 120) String functionName,
+        LocalDate joinedAt,
         @Email @Size(max = 180) String email,
         @Size(max = 40) String phone,
         @Min(0) Integer tasks,

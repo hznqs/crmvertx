@@ -6,6 +6,7 @@ import { ServiceDialog } from "@/components/services/service-dialog";
 import { ServiceFormFields } from "@/components/services/service-form-fields";
 import { ServiceSubmitButton } from "@/components/services/service-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 export function ServiceCreateButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,10 +18,10 @@ export function ServiceCreateButton() {
       </button>
       {isOpen ? (
         <ServiceDialog title="Cadastrar servico" eyebrow="Catalogo operacional" onClose={() => setIsOpen(false)}>
-          <form action={createServiceAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createServiceAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <ServiceFormFields />
             <DialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar servico" />
-          </form>
+          </SafeActionForm>
         </ServiceDialog>
       ) : null}
     </>

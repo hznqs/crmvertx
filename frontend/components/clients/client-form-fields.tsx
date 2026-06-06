@@ -27,7 +27,7 @@ export function ClientFormFields({ client }: ClientFormFieldsProps) {
         </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Field label="Fase">
           <PremiumSelect name="phase" required defaultValue={client?.phase ?? "fechado"} options={toOptions(clientPhaseLabels)} />
         </Field>
@@ -36,6 +36,17 @@ export function ClientFormFields({ client }: ClientFormFieldsProps) {
         </Field>
         <Field label="Prioridade">
           <PremiumSelect name="priority" required defaultValue={client?.priority ?? "MEDIA"} options={toOptions(clientPriorityLabels)} />
+        </Field>
+        <Field label="Tipo">
+          <PremiumSelect
+            name="clientType"
+            required
+            defaultValue={client?.clientType ?? "JURIDICA"}
+            options={[
+              { value: "JURIDICA", label: "Pessoa juridica" },
+              { value: "FISICA", label: "Pessoa fisica" }
+            ]}
+          />
         </Field>
       </div>
 
@@ -49,14 +60,14 @@ export function ClientFormFields({ client }: ClientFormFieldsProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Field label="Valor contrato">
-          <FormattedInput name="value" mask="currency" required defaultValue={client?.value ?? 0} />
-        </Field>
-        <Field label="Meses">
-          <FormattedInput name="months" mask="integer" required defaultValue={client?.months ?? 1} />
-        </Field>
         <Field label="Segmento">
           <input name="segment" defaultValue={client?.segment ?? ""} className={inputClassName} />
+        </Field>
+        <Field label="Origem">
+          <input name="origin" defaultValue={client?.origin ?? ""} className={inputClassName} placeholder="Lead, indicacao, outbound..." />
+        </Field>
+        <Field label="Responsavel interno">
+          <input name="responsibleName" defaultValue={client?.responsibleName ?? ""} className={inputClassName} />
         </Field>
       </div>
 
@@ -65,7 +76,7 @@ export function ClientFormFields({ client }: ClientFormFieldsProps) {
           <FormattedInput name="document" mask="cpfCnpj" defaultValue={client?.document ?? ""} placeholder="CPF ou CNPJ" />
         </Field>
         <Field label="Tipo documento">
-          <PremiumSelect name="documentType" defaultValue={client?.documentType ?? ""} placeholder="Nao informado" options={[{ value: "", label: "Nao informado" }, ...toOptions(documentTypeLabels)]} />
+          <PremiumSelect name="documentType" defaultValue={client?.documentType ?? "NAO_INFORMADO"} options={toOptions(documentTypeLabels)} />
         </Field>
         <Field label="Tags">
           <input name="tags" defaultValue={client?.tags ?? ""} className={inputClassName} placeholder="vip, mensalista" />

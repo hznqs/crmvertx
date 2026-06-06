@@ -1,4 +1,5 @@
 import { teamRoleOptions } from "@/lib/team/labels";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormattedInput } from "@/components/ui/formatted-input";
 import { PremiumSelect } from "@/components/ui/premium-select";
 import type { TeamMember } from "@/lib/types/team";
@@ -13,15 +14,22 @@ const inputClassName =
 export function TeamFormFields({ member }: TeamFormFieldsProps) {
   return (
     <div className="grid gap-4">
-      <div className="grid gap-4 md:grid-cols-[1fr_0.8fr_0.8fr]">
+      <div className="grid gap-4 md:grid-cols-[1fr_0.8fr]">
         <Field label="Nome">
           <input name="name" required defaultValue={member?.name ?? ""} className={inputClassName} />
         </Field>
         <Field label="Cargo">
           <PremiumSelect name="role" required defaultValue={member?.role ?? teamRoleOptions[0]?.value ?? ""} options={teamRoleOptions} searchable />
         </Field>
-        <Field label="Usuario">
-          <input name="userId" defaultValue={member?.userId ?? ""} placeholder="UUID opcional" className={inputClassName} />
+        <input type="hidden" name="userId" value={member?.userId ?? ""} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Funcao">
+          <input name="functionName" defaultValue={member?.functionName ?? ""} className={inputClassName} placeholder="Ex.: Gestor de trafego, designer" />
+        </Field>
+        <Field label="Data de entrada">
+          <DatePicker name="joinedAt" defaultValue={member?.joinedAt ?? ""} />
         </Field>
       </div>
 

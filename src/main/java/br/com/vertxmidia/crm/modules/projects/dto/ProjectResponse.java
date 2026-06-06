@@ -16,6 +16,8 @@ public record ProjectResponse(
         ProjectStatus status,
         UUID responsibleUserId,
         String teamMemberIds,
+        LocalDate startDate,
+        String priority,
         Integer progress,
         LocalDate slaDueDate,
         BigDecimal budget,

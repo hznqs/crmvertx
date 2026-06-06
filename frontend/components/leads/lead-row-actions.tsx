@@ -1,5 +1,6 @@
 "use client";
 
+import { Layers3, Pencil, Trash2, UserCheck } from "lucide-react";
 import { useState } from "react";
 import {
   convertLeadAction,
@@ -10,7 +11,9 @@ import {
 import { LeadFormFields } from "@/components/leads/lead-form-fields";
 import { LeadSubmitButton } from "@/components/leads/lead-submit-button";
 import { ModalDialog, ModalFooter } from "@/components/ui/modal-dialog";
-import { ReadOnlyActionLabel, RowActionButton } from "@/components/ui/row-actions";
+import { ActionMenu, type ActionMenuAction } from "@/components/ui/action-menu";
+import { ReadOnlyActionLabel } from "@/components/ui/row-actions";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { PremiumSelect } from "@/components/ui/premium-select";
 import { commercialStageLabels } from "@/lib/leads/labels";
 import type { ModuleActionPermissions } from "@/lib/auth/permissions";
@@ -31,26 +34,7 @@ export function LeadRowActions({ lead, actionPermissions }: LeadRowActionsProps)
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {actionPermissions.canWrite ? (
-        <>
-          <RowActionButton onClick={() => setIsEditing(true)}>
-            Editar
-          </RowActionButton>
-          <RowActionButton tone="brand" onClick={() => setIsMoving(true)}>
-            Fase
-          </RowActionButton>
-          <form action={convertLeadAction}>
-            <input type="hidden" name="id" value={lead.id} />
-            <LeadSubmitButton idleLabel="Converter" pendingLabel="Convertendo..." tone="ghost" />
-          </form>
-        </>
-      ) : null}
-      {actionPermissions.canManage ? (
-        <form action={deleteLeadAction}>
-          <input type="hidden" name="id" value={lead.id} />
-          <LeadSubmitButton idleLabel="Excluir" pendingLabel="Excluindo..." tone="danger" />
-        </form>
-      ) : null}
+      <ActionMenu actions={leadActions()} />
 
       {isEditing ? (
         <LeadEditDialog lead={lead} onClose={() => setIsEditing(false)} />
@@ -61,6 +45,48 @@ export function LeadRowActions({ lead, actionPermissions }: LeadRowActionsProps)
       ) : null}
     </div>
   );
+
+  function leadActions(): ActionMenuAction[] {
+    const converted = lead.status === "CONVERTED" || Boolean(lead.convertedClientId);
+
+    return [
+      {
+        label: "Editar",
+        icon: Pencil,
+        onSelect: () => setIsEditing(true),
+        hidden: !actionPermissions.canWrite
+      },
+      {
+        label: "Alterar fase",
+        icon: Layers3,
+        variant: "secondary",
+        onSelect: () => setIsMoving(true),
+        hidden: !actionPermissions.canWrite
+      },
+      {
+        label: "Converter em cliente",
+        icon: UserCheck,
+        variant: "secondary",
+        formAction: convertLeadAction,
+        fields: { id: lead.id },
+        hidden: !actionPermissions.canWrite || converted,
+        tooltip: "Cria o cliente e remove o lead do pipeline ativo."
+      },
+      {
+        label: "Arquivar lead",
+        icon: Trash2,
+        variant: "danger",
+        separatorBefore: true,
+        formAction: deleteLeadAction,
+        fields: { id: lead.id },
+        hidden: !actionPermissions.canManage,
+        requiresConfirmation: true,
+        confirmationTitle: "Arquivar lead",
+        confirmationDescription: "Tem certeza que deseja arquivar este lead? Ele deixara de aparecer no pipeline ativo.",
+        confirmationActionLabel: "Arquivar"
+      }
+    ];
+  }
 }
 
 function LeadEditDialog({
@@ -72,11 +98,11 @@ function LeadEditDialog({
 }>) {
   return (
     <ModalDialog title="Editar lead" eyebrow={lead.name} onClose={onClose} maxWidthClassName="max-w-3xl">
-        <form action={updateLeadAction} className="mt-5 space-y-5">
+        <SafeActionForm action={updateLeadAction} onSuccess={onClose} className="mt-5 space-y-5">
           <input type="hidden" name="id" value={lead.id} />
           <LeadFormFields lead={lead} mode="edit" />
           <DialogFooter onClose={onClose} submitLabel="Salvar alteracoes" />
-        </form>
+        </SafeActionForm>
     </ModalDialog>
   );
 }
@@ -90,7 +116,7 @@ function LeadStageDialog({
 }>) {
   return (
     <ModalDialog title="Atualizar fase" eyebrow={lead.name} onClose={onClose} maxWidthClassName="max-w-lg">
-        <form action={updateLeadStageAction} className="mt-5 space-y-5">
+        <SafeActionForm action={updateLeadStageAction} onSuccess={onClose} className="mt-5 space-y-5">
           <input type="hidden" name="id" value={lead.id} />
           <label className="grid gap-2">
             <span className="text-sm font-semibold text-zinc-300">Fase comercial</span>
@@ -106,7 +132,7 @@ function LeadStageDialog({
             />
           </label>
           <DialogFooter onClose={onClose} submitLabel="Atualizar fase" />
-        </form>
+        </SafeActionForm>
     </ModalDialog>
   );
 }

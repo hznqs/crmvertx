@@ -2,11 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
 
 type TeamMemberPayload = {
   userId: string | null;
   name: string;
   role: string;
+  functionName: string;
+  joinedAt: string | null;
   email: string;
   phone: string;
   tasks: number;
@@ -19,21 +23,27 @@ type TeamMemberPayload = {
   active: boolean;
 };
 
-export async function createTeamMemberAction(formData: FormData) {
-  await mutateTeamBackend("/api/team-members", "POST", teamPayloadFromForm(formData));
-  revalidatePath("/team");
+export async function createTeamMemberAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateTeamBackend("/api/team-members", "POST", teamPayloadFromForm(formData));
+    revalidatePath("/team");
+  }, "Nao foi possivel salvar o membro da equipe");
 }
 
-export async function updateTeamMemberAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateTeamBackend(`/api/team-members/${encodeURIComponent(id)}`, "PUT", teamPayloadFromForm(formData));
-  revalidatePath("/team");
+export async function updateTeamMemberAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateTeamBackend(`/api/team-members/${encodeURIComponent(id)}`, "PUT", teamPayloadFromForm(formData));
+    revalidatePath("/team");
+  }, "Nao foi possivel salvar o membro da equipe");
 }
 
-export async function deleteTeamMemberAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateTeamBackend(`/api/team-members/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/team");
+export async function deleteTeamMemberAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateTeamBackend(`/api/team-members/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/team");
+  }, "Nao foi possivel excluir o membro da equipe");
 }
 
 function teamPayloadFromForm(formData: FormData): TeamMemberPayload {
@@ -41,6 +51,8 @@ function teamPayloadFromForm(formData: FormData): TeamMemberPayload {
     userId: nullableString(formData.get("userId")),
     name: requiredString(formData.get("name")),
     role: requiredString(formData.get("role")),
+    functionName: stringFromForm(formData.get("functionName")),
+    joinedAt: nullableString(formData.get("joinedAt")),
     email: stringFromForm(formData.get("email")),
     phone: stringFromForm(formData.get("phone")),
     tasks: numberFromForm(formData.get("tasks")),
@@ -96,5 +108,5 @@ function stringFromForm(value: FormDataEntryValue | null) {
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }

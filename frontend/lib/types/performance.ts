@@ -21,6 +21,7 @@ export type PerformancePage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type PerformanceQuery = {

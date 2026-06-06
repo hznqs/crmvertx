@@ -83,7 +83,7 @@ function isStaticOrApiPath(request: NextRequest) {
 }
 
 function isLoginPath(request: NextRequest) {
-  return request.nextUrl.pathname === "/login";
+  return request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/register";
 }
 
 function isForbiddenPath(request: NextRequest) {

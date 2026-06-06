@@ -18,10 +18,22 @@ public class DashboardChartService {
 
     private final FinanceEntryRepository financeEntries;
     private final CrmEventRepository events;
+    private final br.com.vertxmidia.crm.modules.leads.infrastructure.LeadRepository leads;
+    private final br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository contracts;
+    private final br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository projects;
 
-    public DashboardChartService(FinanceEntryRepository financeEntries, CrmEventRepository events) {
+    public DashboardChartService(
+            FinanceEntryRepository financeEntries, 
+            CrmEventRepository events,
+            br.com.vertxmidia.crm.modules.leads.infrastructure.LeadRepository leads,
+            br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository contracts,
+            br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository projects
+    ) {
         this.financeEntries = financeEntries;
         this.events = events;
+        this.leads = leads;
+        this.contracts = contracts;
+        this.projects = projects;
     }
 
     /**
@@ -77,6 +89,47 @@ public class DashboardChartService {
             cursor = cursor.plusDays(1);
         }
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> pipelineFunnel(LocalDate from, LocalDate to) {
+        LocalDate periodStart = from == null ? LocalDate.now().withDayOfMonth(1) : from;
+        LocalDate periodEnd = to == null ? periodStart.plusMonths(1).minusDays(1) : to;
+        validateRange(periodStart, periodEnd);
+        java.time.ZoneId zone = java.time.ZoneId.of("UTC");
+        java.time.Instant start = periodStart.atStartOfDay(zone).toInstant();
+        java.time.Instant end = periodEnd.plusDays(1).atStartOfDay(zone).toInstant();
+        return leads.countByCommercialStageBetween(start, end);
+    }
+
+    @Transactional(readOnly = true)
+    public List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> leadsOrigin(LocalDate from, LocalDate to) {
+        LocalDate periodStart = from == null ? LocalDate.now().withDayOfMonth(1) : from;
+        LocalDate periodEnd = to == null ? periodStart.plusMonths(1).minusDays(1) : to;
+        validateRange(periodStart, periodEnd);
+        java.time.ZoneId zone = java.time.ZoneId.of("UTC");
+        java.time.Instant start = periodStart.atStartOfDay(zone).toInstant();
+        java.time.Instant end = periodEnd.plusDays(1).atStartOfDay(zone).toInstant();
+        return leads.countByOriginBetween(start, end);
+    }
+
+    @Transactional(readOnly = true)
+    public List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> topServices(LocalDate from, LocalDate to) {
+        LocalDate periodStart = from == null ? LocalDate.now().withDayOfMonth(1) : from;
+        LocalDate periodEnd = to == null ? periodStart.plusMonths(1).minusDays(1) : to;
+        validateRange(periodStart, periodEnd);
+        return contracts.countTopServicesBetween(periodStart, periodEnd);
+    }
+
+    @Transactional(readOnly = true)
+    public List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> projectsStatus(LocalDate from, LocalDate to) {
+        LocalDate periodStart = from == null ? LocalDate.now().withDayOfMonth(1) : from;
+        LocalDate periodEnd = to == null ? periodStart.plusMonths(1).minusDays(1) : to;
+        validateRange(periodStart, periodEnd);
+        java.time.ZoneId zone = java.time.ZoneId.of("UTC");
+        java.time.Instant start = periodStart.atStartOfDay(zone).toInstant();
+        java.time.Instant end = periodEnd.plusDays(1).atStartOfDay(zone).toInstant();
+        return projects.countByStatusBetween(start, end);
     }
 
     private Map<LocalDate, Long> toDateMap(List<Object[]> rows) {

@@ -19,6 +19,7 @@ export default async function LeadsPage({ searchParams }: LeadPageProps) {
   const actionPermissions = moduleActionPermissions(user?.role ?? null, "LEADS");
   const query = buildLeadQuery(resolvedSearchParams);
   const leadPage = await fetchLeads(query);
+  const loadError = leadPage.loadError;
 
   return (
     <main className="space-y-6">
@@ -42,10 +43,9 @@ export default async function LeadsPage({ searchParams }: LeadPageProps) {
 
       <LeadMetrics leads={leadPage.content} totalElements={leadPage.totalElements} />
 
-      {leadPage.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar os dados reais de leads.
+          {loadError}
         </div>
       ) : null}
 

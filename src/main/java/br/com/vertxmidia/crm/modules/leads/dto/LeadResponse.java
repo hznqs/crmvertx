@@ -6,6 +6,7 @@ import br.com.vertxmidia.crm.modules.leads.domain.LeadStatus;
 import br.com.vertxmidia.crm.modules.leads.domain.LeadTemperature;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record LeadResponse(
@@ -19,11 +20,16 @@ public record LeadResponse(
         LeadTemperature temperature,
         BigDecimal potentialValue,
         UUID responsibleUserId,
+        String responsibleName,
+        String serviceInterest,
+        String nextAction,
+        LocalDate nextActionDate,
         String notes,
         LeadStatus status,
         CommercialStage commercialStage,
         String lostReason,
         Instant convertedAt,
+        UUID convertedClientId,
         boolean active,
         UUID createdBy,
         UUID updatedBy,

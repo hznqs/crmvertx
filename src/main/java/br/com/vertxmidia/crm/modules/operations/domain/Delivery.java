@@ -46,6 +46,13 @@ public class Delivery extends TimestampedEntity implements OperationResource {
     @Size(max = 40)
     @Column(nullable = false, length = 40)
     private String status;
+    @Size(max = 30)
+    @Column(nullable = false, length = 30)
+    private String priority = "MEDIA";
+    @Column(nullable = false)
+    private Integer progress = 0;
+    @Column(columnDefinition = "text")
+    private String tags;
     @Column(columnDefinition = "text")
     private String description;
     @Column(name = "approved_at")
@@ -78,6 +85,12 @@ public class Delivery extends TimestampedEntity implements OperationResource {
     public void setDeadline(LocalDate deadline) { this.deadline = deadline; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) { this.priority = priority; }
+    public Integer getProgress() { return progress; }
+    public void setProgress(Integer progress) { this.progress = progress; }
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public Instant getApprovedAt() { return approvedAt; }

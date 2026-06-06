@@ -52,6 +52,10 @@ public class FinanceEntry extends TimestampedEntity implements OperationResource
     private boolean autoBilling;
     @Column(name = "cost_center", nullable = false, length = 40)
     private String costCenter = "operacional";
+    @Column(name = "payment_method", length = 80)
+    private String paymentMethod;
+    @Column(columnDefinition = "text")
+    private String notes;
     @Column(nullable = false)
     private boolean active = true;
     @Column(name = "created_by")
@@ -84,6 +88,10 @@ public class FinanceEntry extends TimestampedEntity implements OperationResource
     public void setAutoBilling(boolean autoBilling) { this.autoBilling = autoBilling; }
     public String getCostCenter() { return costCenter; }
     public void setCostCenter(String costCenter) { this.costCenter = costCenter; }
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public UUID getCreatedBy() { return createdBy; }

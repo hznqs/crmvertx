@@ -36,7 +36,7 @@ public class ServiceOfferingService {
 
     @Transactional(readOnly = true)
     public Page<ServiceOfferingResponse> search(ServiceOfferingFilterRequest filter, Pageable pageable) {
-        return repository.findAll(ServiceOfferingSpecifications.byFilters(filter), pageable)
+        return repository.findAll(ServiceOfferingSpecifications.byFilters(withDefaultActiveFilter(filter)), pageable)
                 .map(mapper::toResponse);
     }
 
@@ -116,6 +116,7 @@ public class ServiceOfferingService {
         auditService.logChange("ServiceOffering", service.getId(), "name", service.getName(), request.name().trim());
         auditService.logChange("ServiceOffering", service.getId(), "category", service.getCategory(), request.category());
         auditService.logChange("ServiceOffering", service.getId(), "description", service.getDescription(), normalizeNullable(request.description()));
+        auditService.logChange("ServiceOffering", service.getId(), "notes", service.getNotes(), normalizeNullable(request.notes()));
         auditService.logChange("ServiceOffering", service.getId(), "billingType", service.getBillingType(), request.billingType());
         auditService.logChange("ServiceOffering", service.getId(), "basePrice", service.getBasePrice(), request.basePrice());
         auditService.logChange("ServiceOffering", service.getId(), "slaDays", service.getSlaDays(), request.slaDays());
@@ -125,6 +126,19 @@ public class ServiceOfferingService {
         auditService.logChange("ServiceOffering", service.getId(), "commissionPercentage", service.getCommissionPercentage(), request.commissionPercentage());
         auditService.logChange("ServiceOffering", service.getId(), "grossMarginPercentage", service.getGrossMarginPercentage(), request.grossMarginPercentage());
         auditService.logChange("ServiceOffering", service.getId(), "active", service.isActive(), request.active() == null || request.active());
+    }
+
+    private ServiceOfferingFilterRequest withDefaultActiveFilter(ServiceOfferingFilterRequest filter) {
+        return new ServiceOfferingFilterRequest(
+                filter.search(),
+                filter.category(),
+                filter.billingType(),
+                filter.minPrice(),
+                filter.maxPrice(),
+                filter.active() == null ? true : filter.active(),
+                filter.createdFrom(),
+                filter.createdTo()
+        );
     }
 
     private UUID currentUserId() {

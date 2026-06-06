@@ -25,5 +25,5 @@ export const clientPriorityLabels: Record<ClientPriority, string> = {
 export const documentTypeLabels: Record<DocumentType, string> = {
   CPF: "CPF",
   CNPJ: "CNPJ",
-  OUTRO: "Outro"
+  NAO_INFORMADO: "Nao informado"
 };

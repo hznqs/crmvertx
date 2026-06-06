@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toTeamSearchParams } from "@/lib/team/query";
 import type { TeamPage, TeamQuery, TeamSummary } from "@/lib/types/team";
 
@@ -36,7 +37,7 @@ export async function fetchTeamMembers(query: TeamQuery): Promise<TeamPage> {
       cache: "no-store"
     });
   } catch {
-    return { ...emptyTeamPage, sourceUnavailable: true };
+    return { ...emptyTeamPage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -44,7 +45,7 @@ export async function fetchTeamMembers(query: TeamQuery): Promise<TeamPage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar equipe");
+    return { ...emptyTeamPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar equipe") };
   }
 
   return response.json();
@@ -66,7 +67,7 @@ export async function fetchTeamSummary(query: Pick<TeamQuery, "role" | "search">
       cache: "no-store"
     });
   } catch {
-    return { ...emptyTeamSummary, sourceUnavailable: true };
+    return { ...emptyTeamSummary, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -74,7 +75,7 @@ export async function fetchTeamSummary(query: Pick<TeamQuery, "role" | "search">
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar resumo da equipe");
+    return { ...emptyTeamSummary, loadError: await backendErrorMessage(response, "Nao foi possivel carregar resumo da equipe") };
   }
 
   return response.json();

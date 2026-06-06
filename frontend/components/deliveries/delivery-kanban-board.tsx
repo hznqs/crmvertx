@@ -2,10 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { AlertTriangle, CalendarClock, CheckCircle2, MessageSquare, Paperclip, Search, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, Search, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { EnterpriseKanban, type EnterpriseKanbanColumn } from "@/components/kanban/enterprise-kanban";
+import { ensureActionSucceeded } from "@/lib/actions/result";
 import {
   deliveryKanbanColumns,
   deliveryKanbanStatuses,
@@ -33,7 +34,9 @@ export function DeliveryKanbanBoard({ deliveries, clientOptions }: DeliveryKanba
   const [isPending, startTransition] = useTransition();
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: DeliveryKanbanStatus }) => updateDeliveryStatusDirectAction(id, status),
+    mutationFn: async ({ id, status }: { id: string; status: DeliveryKanbanStatus }) => {
+      ensureActionSucceeded(await updateDeliveryStatusDirectAction(id, status));
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["deliveries"] });
     }
@@ -99,7 +102,7 @@ export function DeliveryKanbanBoard({ deliveries, clientOptions }: DeliveryKanba
         />
         <div className="flex items-center justify-end gap-2 text-xs font-black text-zinc-500">
           {isPending || mutation.isPending ? <span className="h-2 w-2 animate-pulse rounded-full bg-brand-400" /> : null}
-          Realtime ready
+          {isPending || mutation.isPending ? "Salvando" : "Atualizado"}
         </div>
       </section>
 
@@ -144,11 +147,11 @@ function DeliveryKanbanCard({ delivery, clientName }: { delivery: Delivery; clie
       </div>
 
       <p className="line-clamp-2 text-xs leading-5 text-zinc-500">
-        {delivery.description || `${delivery.type} com checklist operacional, comentarios, anexos e atividade preparada.`}
+        {delivery.description || `${delivery.type} com prazo, responsavel e status operacional acompanhados pelo CRM.`}
       </p>
 
       <div className="flex flex-wrap gap-1.5">
-        {[delivery.type, "SLA", "QA"].map((tag) => (
+        {[delivery.type, delivery.status].map((tag) => (
           <span key={tag} className="rounded-md border border-line bg-white/[0.045] px-2 py-1 text-[11px] font-bold text-zinc-300">
             {tag}
           </span>
@@ -182,10 +185,6 @@ function DeliveryKanbanCard({ delivery, clientName }: { delivery: Delivery; clie
           <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" aria-hidden />
           {checklistDone}/4 checks
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <MessageSquare className="h-3.5 w-3.5 text-brand-400" aria-hidden />
-          atividade
-        </span>
       </div>
 
       <div className="flex items-center justify-between border-t border-line pt-3">
@@ -196,10 +195,7 @@ function DeliveryKanbanCard({ delivery, clientName }: { delivery: Delivery; clie
             </span>
           ))}
         </div>
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-500">
-          <Paperclip className="h-3.5 w-3.5" aria-hidden />
-          anexos
-        </span>
+        <span className="text-[11px] font-bold text-zinc-500">CRM operacional</span>
       </div>
     </div>
   );

@@ -2,6 +2,9 @@ package br.com.vertxmidia.crm.modules.dashboard.application;
 
 import br.com.vertxmidia.crm.modules.operations.infrastructure.CrmEventRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.FinanceEntryRepository;
+import br.com.vertxmidia.crm.modules.leads.infrastructure.LeadRepository;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
+import br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -27,7 +30,13 @@ class DashboardChartServiceTest {
                 new Object[] { to, new BigDecimal("3000.00") }
         ));
 
-        DashboardChartService service = new DashboardChartService(financeEntries, events);
+        DashboardChartService service = new DashboardChartService(
+                financeEntries, 
+                events,
+                mock(LeadRepository.class),
+                mock(ContractRepository.class),
+                mock(ProjectRepository.class)
+        );
 
         var series = service.revenueByDay(from, to);
 
@@ -55,7 +64,13 @@ class DashboardChartServiceTest {
                 new Object[] { LocalDate.of(2026, 5, 11), 1L }
         ));
 
-        DashboardChartService service = new DashboardChartService(financeEntries, events);
+        DashboardChartService service = new DashboardChartService(
+                financeEntries, 
+                events,
+                mock(LeadRepository.class),
+                mock(ContractRepository.class),
+                mock(ProjectRepository.class)
+        );
 
         var series = service.meetingsSalesByDay(from, to);
 
@@ -72,7 +87,10 @@ class DashboardChartServiceTest {
     void rejectsInvalidDateRange() {
         DashboardChartService service = new DashboardChartService(
                 mock(FinanceEntryRepository.class),
-                mock(CrmEventRepository.class)
+                mock(CrmEventRepository.class),
+                mock(LeadRepository.class),
+                mock(ContractRepository.class),
+                mock(ProjectRepository.class)
         );
 
         assertThatThrownBy(() -> service.revenueByDay(LocalDate.of(2026, 5, 2), LocalDate.of(2026, 5, 1)))

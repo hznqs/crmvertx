@@ -5,6 +5,7 @@ import { ProjectDialog } from "@/components/projects/project-dialog";
 import { ProjectFormFields } from "@/components/projects/project-form-fields";
 import { ProjectSubmitButton } from "@/components/projects/project-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { createProjectAction } from "@/lib/projects/actions";
 import type { ProjectSelectOption } from "@/lib/types/projects";
 
@@ -23,10 +24,10 @@ export function ProjectCreateButton({ clientOptions, serviceOptions }: ProjectCr
       </button>
       {isOpen ? (
         <ProjectDialog title="Cadastrar projeto" eyebrow="Operacao" onClose={() => setIsOpen(false)}>
-          <form action={createProjectAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createProjectAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <ProjectFormFields clientOptions={clientOptions} serviceOptions={serviceOptions} />
             <ProjectDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar projeto" />
-          </form>
+          </SafeActionForm>
         </ProjectDialog>
       ) : null}
     </>

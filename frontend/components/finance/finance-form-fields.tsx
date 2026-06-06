@@ -46,8 +46,20 @@ export function FinanceFormFields({
         <Field label="Centro de custo">
           <PremiumSelect name="costCenter" required defaultValue={entry?.costCenter ?? "operacional"} options={toOptions(costCenterLabels)} />
         </Field>
-        <Field label="Ativo">
-          <PremiumSelect name="active" defaultValue={entry?.active === false ? "false" : "true"} options={booleanOptions("Ativo", "Inativo")} />
+        <Field label="Forma pagamento">
+          <PremiumSelect
+            name="paymentMethod"
+            defaultValue={entry?.paymentMethod ?? ""}
+            placeholder="Nao informada"
+            options={[
+              { value: "", label: "Nao informada" },
+              { value: "pix", label: "Pix" },
+              { value: "boleto", label: "Boleto" },
+              { value: "cartao", label: "Cartao" },
+              { value: "transferencia", label: "Transferencia" },
+              { value: "dinheiro", label: "Dinheiro" }
+            ]}
+          />
         </Field>
       </div>
 
@@ -72,6 +84,15 @@ export function FinanceFormFields({
         </Field>
         <Field label="Cobranca automatica">
           <PremiumSelect name="autoBilling" defaultValue={entry?.autoBilling ? "true" : "false"} options={booleanOptions("Sim", "Nao")} />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+        <Field label="Observacoes">
+          <textarea name="notes" defaultValue={entry?.notes ?? ""} className={`${inputClassName} min-h-24 py-3`} />
+        </Field>
+        <Field label="Ativo">
+          <PremiumSelect name="active" defaultValue={entry?.active === false ? "false" : "true"} options={booleanOptions("Ativo", "Inativo")} />
         </Field>
       </div>
     </div>

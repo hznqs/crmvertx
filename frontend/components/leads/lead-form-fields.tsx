@@ -4,6 +4,7 @@ import {
   leadStatusLabels,
   leadTemperatureLabels
 } from "@/lib/leads/labels";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormattedInput } from "@/components/ui/formatted-input";
 import { PremiumSelect } from "@/components/ui/premium-select";
 import type { Lead } from "@/lib/types/leads";
@@ -72,6 +73,41 @@ export function LeadFormFields({ lead, mode }: LeadFormFieldsProps) {
           placeholder="Ex.: SaaS, clinica, e-commerce"
         />
       </Field>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Servico de interesse">
+          <input
+            name="serviceInterest"
+            defaultValue={lead?.serviceInterest ?? ""}
+            className={inputClassName}
+            placeholder="Ex.: site, trafego pago, social media"
+          />
+        </Field>
+
+        <Field label="Responsavel interno">
+          <input
+            name="responsibleName"
+            defaultValue={lead?.responsibleName ?? ""}
+            className={inputClassName}
+            placeholder="Nome do responsavel"
+          />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+        <Field label="Proxima acao">
+          <input
+            name="nextAction"
+            defaultValue={lead?.nextAction ?? ""}
+            className={inputClassName}
+            placeholder="Ex.: enviar proposta, ligar, marcar reuniao"
+          />
+        </Field>
+
+        <Field label="Data da proxima acao">
+          <DatePicker name="nextActionDate" defaultValue={lead?.nextActionDate ?? ""} />
+        </Field>
+      </div>
 
       {mode === "edit" ? (
         <div className="grid gap-4 md:grid-cols-3">

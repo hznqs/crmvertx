@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toProjectSearchParams } from "@/lib/projects/query";
 import type { ProjectPage, ProjectQuery } from "@/lib/types/projects";
 
@@ -24,7 +25,7 @@ export async function fetchProjects(query: ProjectQuery): Promise<ProjectPage> {
       cache: "no-store"
     });
   } catch {
-    return { ...emptyProjectPage, sourceUnavailable: true };
+    return { ...emptyProjectPage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -32,7 +33,7 @@ export async function fetchProjects(query: ProjectQuery): Promise<ProjectPage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar projetos");
+    return { ...emptyProjectPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar projetos") };
   }
 
   return response.json();

@@ -1,12 +1,19 @@
 package br.com.vertxmidia.crm.modules.tasks.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
+import br.com.vertxmidia.crm.modules.operations.domain.Contract;
+import br.com.vertxmidia.crm.modules.operations.domain.ContractServiceItem;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryResponse;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.DeliveryRepository;
 import br.com.vertxmidia.crm.modules.projects.domain.Project;
 import br.com.vertxmidia.crm.modules.projects.domain.ProjectStatus;
 import br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository;
 import br.com.vertxmidia.crm.modules.services.domain.ServiceOffering;
+import br.com.vertxmidia.crm.modules.services.domain.ServiceTaskTemplate;
+import br.com.vertxmidia.crm.modules.services.infrastructure.ServiceOfferingRepository;
+import br.com.vertxmidia.crm.modules.services.infrastructure.ServiceTaskTemplateRepository;
 import br.com.vertxmidia.crm.modules.tasks.domain.Task;
 import br.com.vertxmidia.crm.modules.tasks.domain.TaskPriority;
 import br.com.vertxmidia.crm.modules.tasks.domain.TaskStatus;
@@ -40,18 +47,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
 
     private final TaskRepository repository;
+    private final ClientRepository clientRepository;
     private final ProjectRepository projectRepository;
+    private final ContractRepository contractRepository;
+    private final ServiceOfferingRepository serviceOfferingRepository;
+    private final ServiceTaskTemplateRepository serviceTaskTemplateRepository;
     private final DeliveryRepository deliveryRepository;
     private final TaskMapper mapper;
     private final AuditService auditService;
 
     public TaskService(TaskRepository repository,
+                       ClientRepository clientRepository,
                        ProjectRepository projectRepository,
+                       ContractRepository contractRepository,
+                       ServiceOfferingRepository serviceOfferingRepository,
+                       ServiceTaskTemplateRepository serviceTaskTemplateRepository,
                        DeliveryRepository deliveryRepository,
                        TaskMapper mapper,
                        AuditService auditService) {
         this.repository = repository;
+        this.clientRepository = clientRepository;
         this.projectRepository = projectRepository;
+        this.contractRepository = contractRepository;
+        this.serviceOfferingRepository = serviceOfferingRepository;
+        this.serviceTaskTemplateRepository = serviceTaskTemplateRepository;
         this.deliveryRepository = deliveryRepository;
         this.mapper = mapper;
         this.auditService = auditService;
@@ -59,7 +78,7 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public Page<TaskResponse> search(TaskFilterRequest filter, Pageable pageable) {
-        return repository.findAll(TaskSpecifications.byFilters(filter), pageable)
+        return repository.findAll(TaskSpecifications.byFilters(withDefaultActiveFilter(filter)), pageable)
                 .map(mapper::toResponse);
     }
 
@@ -77,6 +96,7 @@ public class TaskService {
         task.setUpdatedBy(currentUserId());
 
         Task saved = repository.save(task);
+        recalculateProjectProgress(saved.getProjectId());
         auditService.log("CREATE", "Task", saved.getId());
         return mapper.toResponse(saved);
     }
@@ -91,6 +111,7 @@ public class TaskService {
         task.setUpdatedBy(currentUserId());
 
         Task saved = repository.save(task);
+        recalculateProjectProgress(saved.getProjectId());
         auditService.log("UPDATE", "Task", saved.getId());
         return mapper.toResponse(saved);
     }
@@ -102,9 +123,11 @@ public class TaskService {
         TaskStatus normalizedStatus = mapper.normalizeStatus(request.status(), task.getDueDate());
         auditService.logChange("Task", task.getId(), "status", task.getStatus(), normalizedStatus);
         task.setStatus(normalizedStatus);
+        mapper.stampCompletion(task, normalizedStatus);
         task.setUpdatedBy(currentUserId());
 
         Task saved = repository.save(task);
+        recalculateProjectProgress(saved.getProjectId());
         auditService.log("STATUS_UPDATE", "Task", saved.getId());
         return mapper.toResponse(saved);
     }
@@ -118,6 +141,7 @@ public class TaskService {
         task.setStatus(TaskStatus.CANCELADA);
         task.setUpdatedBy(currentUserId());
         repository.save(task);
+        recalculateProjectProgress(task.getProjectId());
         auditService.log("SOFT_DELETE", "Task", id);
     }
 
@@ -155,6 +179,50 @@ public class TaskService {
         return responses;
     }
 
+    @Transactional
+    @CacheEvict(value = "dashboardMetrics", allEntries = true)
+    public List<TaskResponse> createContractProjectTasks(Project project,
+                                                         Contract contract,
+                                                         List<ContractServiceItem> serviceItems) {
+        List<Task> currentTasks = repository.findByProjectIdAndActiveTrue(project.getId());
+        if (!currentTasks.isEmpty()) {
+            return currentTasks.stream()
+                    .sorted(Comparator.comparing(Task::getSortOrder).thenComparing(Task::getCreatedAt))
+                    .map(mapper::toResponse)
+                    .toList();
+        }
+
+        List<TaskResponse> responses = new ArrayList<>();
+        int sortOrder = 10;
+        LocalDate startDate = project.getStartDate() == null ? LocalDate.now() : project.getStartDate();
+
+        for (ContractServiceItem item : serviceItems) {
+            List<ServiceTaskTemplate> templates = item.getServiceId() == null
+                    ? List.of()
+                    : serviceTaskTemplateRepository.findByServiceIdAndActiveTrueOrderBySortOrderAsc(item.getServiceId());
+
+            if (templates.isEmpty()) {
+                Task fallbackTask = taskFromFallback(project, contract, item, sortOrder, startDate);
+                Task saved = repository.save(fallbackTask);
+                auditService.log("CREATE_CONTRACT_PROJECT_TASK", "Task", saved.getId());
+                responses.add(mapper.toResponse(saved));
+                sortOrder += 10;
+                continue;
+            }
+
+            for (ServiceTaskTemplate template : templates) {
+                Task task = taskFromTemplate(project, contract, item, template, sortOrder, startDate);
+                Task saved = repository.save(task);
+                auditService.log("CREATE_CONTRACT_PROJECT_TASK", "Task", saved.getId());
+                responses.add(mapper.toResponse(saved));
+                sortOrder += 10;
+            }
+        }
+
+        recalculateProjectProgress(project.getId());
+        return responses;
+    }
+
     private Task getActiveTask(UUID id) {
         return repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new EntityNotFoundException("Tarefa nao encontrada"));
@@ -167,17 +235,49 @@ public class TaskService {
         if (request.deliveryId() != null && !deliveryRepository.existsById(request.deliveryId())) {
             throw new EntityNotFoundException("Entrega nao encontrada para a tarefa");
         }
+        if (request.clientId() != null && !clientRepository.existsById(request.clientId())) {
+            throw new EntityNotFoundException("Cliente nao encontrado para a tarefa");
+        }
+        if (request.contractId() != null && !contractRepository.existsById(request.contractId())) {
+            throw new EntityNotFoundException("Contrato nao encontrado para a tarefa");
+        }
+        if (request.serviceId() != null && serviceOfferingRepository.findByIdAndActiveTrue(request.serviceId()).isEmpty()) {
+            throw new EntityNotFoundException("Servico ativo nao encontrado para a tarefa");
+        }
     }
 
     private void auditChanges(Task task, TaskRequest request) {
         auditService.logChange("Task", task.getId(), "projectId", task.getProjectId(), request.projectId());
         auditService.logChange("Task", task.getId(), "deliveryId", task.getDeliveryId(), request.deliveryId());
+        auditService.logChange("Task", task.getId(), "clientId", task.getClientId(), request.clientId());
+        auditService.logChange("Task", task.getId(), "contractId", task.getContractId(), request.contractId());
+        auditService.logChange("Task", task.getId(), "serviceId", task.getServiceId(), request.serviceId());
         auditService.logChange("Task", task.getId(), "responsibleUserId", task.getResponsibleUserId(), request.responsibleUserId());
         auditService.logChange("Task", task.getId(), "title", task.getTitle(), request.title().trim());
+        auditService.logChange("Task", task.getId(), "description", task.getDescription(), normalizeNullable(request.description()));
+        auditService.logChange("Task", task.getId(), "checklist", task.getChecklist(), normalizeNullable(request.checklist()));
+        auditService.logChange("Task", task.getId(), "comments", task.getComments(), normalizeNullable(request.comments()));
         auditService.logChange("Task", task.getId(), "priority", task.getPriority(), request.priority());
         auditService.logChange("Task", task.getId(), "dueDate", task.getDueDate(), request.dueDate());
         auditService.logChange("Task", task.getId(), "status", task.getStatus(), mapper.normalizeStatus(request.status(), request.dueDate()));
+        auditService.logChange("Task", task.getId(), "sortOrder", task.getSortOrder(), request.sortOrder() == null ? 0 : request.sortOrder());
         auditService.logChange("Task", task.getId(), "active", task.isActive(), request.active() == null || request.active());
+    }
+
+    private TaskFilterRequest withDefaultActiveFilter(TaskFilterRequest filter) {
+        return new TaskFilterRequest(
+                filter.search(),
+                filter.projectId(),
+                filter.deliveryId(),
+                filter.responsibleUserId(),
+                filter.priority(),
+                filter.status(),
+                filter.dueFrom(),
+                filter.dueTo(),
+                filter.active() == null ? true : filter.active(),
+                filter.createdFrom(),
+                filter.createdTo()
+        );
     }
 
     private UUID currentUserId() {
@@ -201,12 +301,17 @@ public class TaskService {
                                   Task task) {
         task.setProjectId(project.getId());
         task.setDeliveryId(delivery == null ? task.getDeliveryId() : delivery.id());
+        task.setClientId(project.getClientId());
+        task.setContractId(project.getContractId());
+        task.setServiceId(project.getServiceId());
         task.setResponsibleUserId(task.getResponsibleUserId() == null ? project.getResponsibleUserId() : task.getResponsibleUserId());
         task.setTitle(truncate(checklistItem, 180));
         task.setDescription(taskDescription(project, delivery));
         task.setPriority(taskPriority(project));
         task.setDueDate(taskDueDate(project, delivery, index, totalTasks));
         task.setStatus(taskStatus(project.getStatus(), task.getStatus()));
+        task.setSortOrder(index * 10);
+        mapper.stampCompletion(task, task.getStatus());
         task.setActive(true);
         task.setUpdatedBy(currentUserId());
         if (task.getCreatedBy() == null) {
@@ -264,6 +369,74 @@ public class TaskService {
         return "Tarefa automatica vinculada a entrega " + delivery.title() + ".";
     }
 
+    private Task taskFromTemplate(Project project,
+                                  Contract contract,
+                                  ContractServiceItem item,
+                                  ServiceTaskTemplate template,
+                                  int sortOrder,
+                                  LocalDate startDate) {
+        Task task = baseContractProjectTask(project, contract, item, sortOrder);
+        task.setTitle(truncate(template.getTitle().trim(), 180));
+        task.setDescription(templateDescription(project, item, template));
+        task.setPriority(template.getDefaultPriority() == null ? TaskPriority.MEDIA : template.getDefaultPriority());
+        task.setDueDate(startDate.plusDays(Math.max(0, template.getEstimatedDays() == null ? 1 : template.getEstimatedDays())));
+        return task;
+    }
+
+    private Task taskFromFallback(Project project,
+                                  Contract contract,
+                                  ContractServiceItem item,
+                                  int sortOrder,
+                                  LocalDate startDate) {
+        Task task = baseContractProjectTask(project, contract, item, sortOrder);
+        String serviceName = item.getServiceNameSnapshot() == null ? "servico contratado" : item.getServiceNameSnapshot();
+        task.setTitle(truncate("Executar servico: " + serviceName, 180));
+        task.setDescription("Tarefa operacional criada como fallback. Configure templates no servico para proximos projetos.");
+        task.setPriority(TaskPriority.MEDIA);
+        task.setDueDate(startDate.plusDays(3));
+        return task;
+    }
+
+    private Task baseContractProjectTask(Project project, Contract contract, ContractServiceItem item, int sortOrder) {
+        Task task = new Task();
+        task.setProjectId(project.getId());
+        task.setClientId(project.getClientId());
+        task.setContractId(contract.getId());
+        task.setServiceId(item.getServiceId());
+        task.setResponsibleUserId(project.getResponsibleUserId());
+        task.setStatus(TaskStatus.PENDENTE);
+        task.setActive(true);
+        task.setSortOrder(sortOrder);
+        task.setCreatedBy(currentUserId());
+        task.setUpdatedBy(currentUserId());
+        return task;
+    }
+
+    private String templateDescription(Project project, ContractServiceItem item, ServiceTaskTemplate template) {
+        String serviceName = item.getServiceNameSnapshot() == null ? "Servico contratado" : item.getServiceNameSnapshot();
+        String description = template.getDescription() == null || template.getDescription().isBlank()
+                ? "Tarefa gerada a partir do template operacional do servico."
+                : template.getDescription().trim();
+        return description + "\n\nServico: " + serviceName + "\nProjeto: " + project.getName();
+    }
+
+    private void recalculateProjectProgress(UUID projectId) {
+        if (projectId == null) {
+            return;
+        }
+        List<Task> tasks = repository.findByProjectIdAndActiveTrue(projectId);
+        projectRepository.findByIdAndActiveTrue(projectId).ifPresent(project -> {
+            if (tasks.isEmpty()) {
+                project.setProgress(0);
+            } else {
+                long completed = tasks.stream().filter(task -> task.getStatus() == TaskStatus.CONCLUIDA).count();
+                project.setProgress((int) Math.round((completed * 100.0) / tasks.size()));
+            }
+            project.setUpdatedBy(currentUserId());
+            projectRepository.save(project);
+        });
+    }
+
     private TaskPriority taskPriority(Project project) {
         if (project.getSlaDueDate() != null && !project.getSlaDueDate().isAfter(LocalDate.now().plusDays(3))) {
             return TaskPriority.ALTA;
@@ -303,5 +476,12 @@ public class TaskService {
 
     private String truncate(String value, int maxLength) {
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

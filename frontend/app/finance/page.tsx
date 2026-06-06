@@ -41,6 +41,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   }));
   const projectOptions = projectPage.content.map(toOption);
   const serviceOptions = servicePage.content.map(toOption);
+  const loadError = financePage.loadError ?? summary.loadError ?? clientPage.loadError ?? contractPage.loadError ?? projectPage.loadError ?? servicePage.loadError;
 
   return (
     <main className="space-y-6">
@@ -69,10 +70,9 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
       <FinanceMetrics summary={summary} />
 
-      {financePage.sourceUnavailable || summary.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar os dados financeiros reais.
+          {loadError}
         </div>
       ) : null}
 

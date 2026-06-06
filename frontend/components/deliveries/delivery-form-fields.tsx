@@ -1,6 +1,7 @@
 import { deliveryStatusLabels, deliveryTypeSuggestions } from "@/lib/deliveries/labels";
 import { deliveryKanbanStatuses } from "@/lib/deliveries/kanban";
 import { DatePicker } from "@/components/ui/date-picker";
+import { FormattedInput } from "@/components/ui/formatted-input";
 import { PremiumSelect } from "@/components/ui/premium-select";
 import type { Delivery, DeliverySelectOption } from "@/lib/types/deliveries";
 
@@ -36,12 +37,25 @@ export function DeliveryFormFields({
         </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Field label="Responsavel">
           <input name="owner" required defaultValue={delivery?.owner ?? ""} className={inputClassName} />
         </Field>
         <Field label="Prazo">
           <DatePicker name="deadline" required defaultValue={delivery?.deadline ?? ""} />
+        </Field>
+        <Field label="Prioridade">
+          <PremiumSelect
+            name="priority"
+            required
+            defaultValue={delivery?.priority ?? "MEDIA"}
+            options={[
+              { value: "BAIXA", label: "Baixa" },
+              { value: "MEDIA", label: "Media" },
+              { value: "ALTA", label: "Alta" },
+              { value: "URGENTE", label: "Urgente" }
+            ]}
+          />
         </Field>
         <Field label="Ativa">
           <PremiumSelect name="active" defaultValue={delivery?.active === false ? "false" : "true"} options={[{ value: "true", label: "Ativa" }, { value: "false", label: "Inativa" }]} />
@@ -60,6 +74,15 @@ export function DeliveryFormFields({
         </Field>
         <Field label="Servico">
           <OptionSelect name="serviceId" value={delivery?.serviceId} options={serviceOptions} />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[180px_1fr]">
+        <Field label="Progresso">
+          <FormattedInput name="progress" mask="percentage" defaultValue={delivery?.progress ?? 0} />
+        </Field>
+        <Field label="Tags">
+          <input name="tags" defaultValue={delivery?.tags ?? ""} className={inputClassName} placeholder="site, urgente, mensalista" />
         </Field>
       </div>
 

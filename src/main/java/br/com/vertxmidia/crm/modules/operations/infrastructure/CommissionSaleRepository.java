@@ -22,7 +22,12 @@ public interface CommissionSaleRepository extends JpaRepository<CommissionSale, 
     BigDecimal totalRevenue(UUID memberId);
 
     @Query("""
-            select coalesce(sum(s.value * s.percent / 100), 0)
+            select coalesce(sum(
+                case
+                    when upper(s.calculationType) = 'FIXA' then s.fixedValue
+                    else s.value * s.percent / 100
+                end
+            ), 0)
             from CommissionSale s
             where s.active = true
               and (:memberId is null or s.memberId = :memberId)
@@ -41,11 +46,31 @@ public interface CommissionSaleRepository extends JpaRepository<CommissionSale, 
             select s.memberId,
                    count(s),
                    coalesce(sum(s.value), 0),
-                   coalesce(sum(s.value * s.percent / 100), 0),
+                   coalesce(sum(
+                       case
+                           when upper(s.calculationType) = 'FIXA' then s.fixedValue
+                           else s.value * s.percent / 100
+                       end
+                   ), 0),
                    coalesce(max(s.goal), 0)
             from CommissionSale s
             where s.active = true
             group by s.memberId
             """)
     List<Object[]> memberStats();
+
+    @Query("""
+            select coalesce(sum(
+                case
+                    when upper(c.calculationType) = 'FIXA' then c.fixedValue
+                    else c.value * c.percent / 100
+                end
+            ), 0)
+            from CommissionSale c
+            where c.active = true
+              and c.status = 'PAGA'
+              and c.paidAt >= :start
+              and c.paidAt <= :end
+            """)
+    BigDecimal sumPaidCommissionsBetween(java.time.Instant start, java.time.Instant end);
 }

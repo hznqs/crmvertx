@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toClientSearchParams } from "@/lib/clients/query";
 import type { ClientPage, ClientQuery } from "@/lib/types/clients";
 
@@ -26,7 +27,8 @@ export async function fetchClients(query: ClientQuery): Promise<ClientPage> {
   } catch {
     return {
       ...emptyClientPage,
-      sourceUnavailable: true
+      sourceUnavailable: true,
+      loadError: "Backend indisponivel em http://localhost:8080."
     };
   }
 
@@ -35,7 +37,7 @@ export async function fetchClients(query: ClientQuery): Promise<ClientPage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar clientes");
+    return { ...emptyClientPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar clientes") };
   }
 
   return response.json();

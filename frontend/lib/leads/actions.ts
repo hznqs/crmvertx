@@ -2,6 +2,8 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
 import type {
   CommercialStage,
   LeadOrigin,
@@ -19,54 +21,68 @@ type LeadPayload = {
   temperature: LeadTemperature;
   potentialValue: number;
   responsibleUserId: string | null;
+  responsibleName: string;
+  serviceInterest: string;
+  nextAction: string;
+  nextActionDate: string | null;
   notes: string;
 };
 
-export async function createLeadAction(formData: FormData) {
-  const payload = leadPayloadFromForm(formData);
-  await mutateLeadBackend("/api/leads", "POST", payload);
-  revalidatePath("/leads");
+export async function createLeadAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const payload = leadPayloadFromForm(formData);
+    await mutateLeadBackend("/api/leads", "POST", payload);
+    revalidatePath("/leads");
+  }, "Nao foi possivel salvar o lead");
 }
 
-export async function updateLeadAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  const payload = {
-    ...leadPayloadFromForm(formData),
-    status: requiredString(formData.get("status")) as LeadStatus,
-    commercialStage: requiredString(formData.get("commercialStage")) as CommercialStage,
-    lostReason: stringFromForm(formData.get("lostReason"))
-  };
+export async function updateLeadAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    const payload = {
+      ...leadPayloadFromForm(formData),
+      status: requiredString(formData.get("status")) as LeadStatus,
+      commercialStage: requiredString(formData.get("commercialStage")) as CommercialStage,
+      lostReason: stringFromForm(formData.get("lostReason"))
+    };
 
-  await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}`, "PUT", payload);
-  revalidatePath("/leads");
+    await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}`, "PUT", payload);
+    revalidatePath("/leads");
+  }, "Nao foi possivel salvar o lead");
 }
 
-export async function updateLeadStageAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  const payload = {
-    commercialStage: requiredString(formData.get("commercialStage")) as CommercialStage,
-    lostReason: stringFromForm(formData.get("lostReason"))
-  };
+export async function updateLeadStageAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    const payload = {
+      commercialStage: requiredString(formData.get("commercialStage")) as CommercialStage,
+      lostReason: stringFromForm(formData.get("lostReason"))
+    };
 
-  await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}/stage`, "PATCH", payload);
-  revalidatePath("/leads");
-  revalidatePath("/pipeline");
+    await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}/stage`, "PATCH", payload);
+    revalidatePath("/leads");
+    revalidatePath("/pipeline");
+  }, "Nao foi possivel atualizar a fase do lead");
 }
 
-export async function convertLeadAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}/convert`, "PATCH");
-  revalidatePath("/leads");
-  revalidatePath("/pipeline");
-  revalidatePath("/clients");
-  revalidatePath("/dashboard");
+export async function convertLeadAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}/convert`, "PATCH");
+    revalidatePath("/leads");
+    revalidatePath("/pipeline");
+    revalidatePath("/clients");
+    revalidatePath("/dashboard");
+  }, "Nao foi possivel converter o lead");
 }
 
-export async function deleteLeadAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/leads");
-  revalidatePath("/pipeline");
+export async function deleteLeadAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateLeadBackend(`/api/leads/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/leads");
+    revalidatePath("/pipeline");
+  }, "Nao foi possivel excluir o lead");
 }
 
 function leadPayloadFromForm(formData: FormData): LeadPayload {
@@ -80,6 +96,10 @@ function leadPayloadFromForm(formData: FormData): LeadPayload {
     temperature: requiredString(formData.get("temperature")) as LeadTemperature,
     potentialValue: numberFromForm(formData.get("potentialValue")),
     responsibleUserId: null,
+    responsibleName: stringFromForm(formData.get("responsibleName")),
+    serviceInterest: stringFromForm(formData.get("serviceInterest")),
+    nextAction: stringFromForm(formData.get("nextAction")),
+    nextActionDate: nullableString(formData.get("nextActionDate")),
     notes: stringFromForm(formData.get("notes"))
   };
 }
@@ -120,6 +140,11 @@ function stringFromForm(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
 }
 
+function nullableString(value: FormDataEntryValue | null) {
+  const normalizedValue = stringFromForm(value);
+  return normalizedValue || null;
+}
+
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }

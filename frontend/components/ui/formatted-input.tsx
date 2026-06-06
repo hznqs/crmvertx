@@ -11,6 +11,7 @@ type FormattedInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "defaultV
   mask: MaskType;
   defaultValue?: string | number | null;
   className?: string;
+  onValueChange?: (submitValue: string) => void;
 };
 
 const keyboardByMask: Partial<Record<MaskType, InputHTMLAttributes<HTMLInputElement>["inputMode"]>> = {
@@ -27,6 +28,8 @@ const keyboardByMask: Partial<Record<MaskType, InputHTMLAttributes<HTMLInputElem
   email: "email"
 };
 
+const selectionSupportedInputTypes = new Set(["", "text", "search", "tel", "url", "password"]);
+
 export function FormattedInput({
   name,
   mask,
@@ -35,6 +38,7 @@ export function FormattedInput({
   required,
   placeholder,
   autoComplete,
+  onValueChange,
   ...props
 }: FormattedInputProps) {
   const { displayValue, submitValue, error, setRawValue, setTouched } = useMask({
@@ -64,17 +68,20 @@ export function FormattedInput({
         onChange={(event) => {
           const target = event.currentTarget;
           const caretFromEnd = target.value.length - (target.selectionStart ?? target.value.length);
-          setRawValue(target.value);
+          const next = setRawValue(target.value);
+          onValueChange?.(next.submitValue);
           requestAnimationFrame(() => {
             const input = inputRef.current;
             if (!input) return;
+            if (!selectionSupportedInputTypes.has(input.type)) return;
             const nextPosition = Math.max(0, input.value.length - caretFromEnd);
             input.setSelectionRange(nextPosition, nextPosition);
           });
         }}
         onPaste={(event) => {
           event.preventDefault();
-          setRawValue(event.clipboardData.getData("text"));
+          const next = setRawValue(event.clipboardData.getData("text"));
+          onValueChange?.(next.submitValue);
         }}
       />
       {error ? (

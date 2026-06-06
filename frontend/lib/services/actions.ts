@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
 import type { ServiceBillingType, ServiceCategory } from "@/lib/types/services";
 
 type ServicePayload = {
   name: string;
   category: ServiceCategory;
   description: string;
+  notes: string;
   billingType: ServiceBillingType;
   basePrice: number;
   slaDays: number;
@@ -19,25 +22,31 @@ type ServicePayload = {
   active: boolean;
 };
 
-export async function createServiceAction(formData: FormData) {
-  await mutateServiceBackend("/api/services", "POST", servicePayloadFromForm(formData));
-  revalidatePath("/services");
+export async function createServiceAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateServiceBackend("/api/services", "POST", servicePayloadFromForm(formData));
+    revalidatePath("/services");
+  }, "Nao foi possivel salvar o servico");
 }
 
-export async function updateServiceAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateServiceBackend(
-    `/api/services/${encodeURIComponent(id)}`,
-    "PUT",
-    servicePayloadFromForm(formData)
-  );
-  revalidatePath("/services");
+export async function updateServiceAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateServiceBackend(
+      `/api/services/${encodeURIComponent(id)}`,
+      "PUT",
+      servicePayloadFromForm(formData)
+    );
+    revalidatePath("/services");
+  }, "Nao foi possivel salvar o servico");
 }
 
-export async function deleteServiceAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateServiceBackend(`/api/services/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/services");
+export async function deleteServiceAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateServiceBackend(`/api/services/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/services");
+  }, "Nao foi possivel excluir o servico");
 }
 
 function servicePayloadFromForm(formData: FormData): ServicePayload {
@@ -45,6 +54,7 @@ function servicePayloadFromForm(formData: FormData): ServicePayload {
     name: requiredString(formData.get("name")),
     category: requiredString(formData.get("category")) as ServiceCategory,
     description: stringFromForm(formData.get("description")),
+    notes: stringFromForm(formData.get("notes")),
     billingType: requiredString(formData.get("billingType")) as ServiceBillingType,
     basePrice: numberFromForm(formData.get("basePrice")),
     slaDays: numberFromForm(formData.get("slaDays")),
@@ -92,5 +102,5 @@ function stringFromForm(value: FormDataEntryValue | null) {
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }

@@ -53,6 +53,10 @@ export function ServiceFormFields({ service }: ServiceFormFieldsProps) {
         <textarea name="description" defaultValue={service?.description ?? ""} className={`${inputClassName} min-h-24 py-3`} />
       </Field>
 
+      <Field label="Observacoes internas">
+        <textarea name="notes" defaultValue={service?.notes ?? ""} className={`${inputClassName} min-h-24 py-3`} />
+      </Field>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Checklist padrao">
           <textarea name="defaultChecklist" defaultValue={service?.defaultChecklist ?? ""} className={`${inputClassName} min-h-32 py-3`} />

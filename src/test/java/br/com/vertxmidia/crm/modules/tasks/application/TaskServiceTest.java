@@ -1,12 +1,16 @@
 package br.com.vertxmidia.crm.modules.tasks.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.dto.DeliveryResponse;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.DeliveryRepository;
 import br.com.vertxmidia.crm.modules.projects.domain.Project;
 import br.com.vertxmidia.crm.modules.projects.domain.ProjectStatus;
 import br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository;
 import br.com.vertxmidia.crm.modules.services.domain.ServiceOffering;
+import br.com.vertxmidia.crm.modules.services.infrastructure.ServiceOfferingRepository;
+import br.com.vertxmidia.crm.modules.services.infrastructure.ServiceTaskTemplateRepository;
 import br.com.vertxmidia.crm.modules.tasks.domain.Task;
 import br.com.vertxmidia.crm.modules.tasks.domain.TaskStatus;
 import br.com.vertxmidia.crm.modules.tasks.infrastructure.TaskRepository;
@@ -76,7 +80,11 @@ class TaskServiceTest {
     private TaskService taskService(TaskRepository repository) {
         return new TaskService(
                 repository,
+                mock(ClientRepository.class),
                 mock(ProjectRepository.class),
+                mock(ContractRepository.class),
+                mock(ServiceOfferingRepository.class),
+                mock(ServiceTaskTemplateRepository.class),
                 mock(DeliveryRepository.class),
                 new TaskMapper(),
                 mock(AuditService.class)
@@ -123,6 +131,9 @@ class TaskServiceTest {
                 "Operacional",
                 LocalDate.now().plusDays(5),
                 "producao",
+                "MEDIA",
+                30,
+                null,
                 null,
                 null,
                 true,

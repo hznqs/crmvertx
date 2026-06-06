@@ -12,7 +12,16 @@ export function ModuleTable({ moduleDefinition, page }: ModuleTableProps) {
     return (
       <StateBox
         title="Backend indisponivel"
-        description="Inicie o Spring Boot em http://localhost:8080 para carregar os dados reais."
+        description={page.loadError ?? "Inicie o Spring Boot em http://localhost:8080 para carregar os dados reais."}
+      />
+    );
+  }
+
+  if (page.loadError) {
+    return (
+      <StateBox
+        title="Nao foi possivel carregar dados"
+        description={page.loadError}
       />
     );
   }

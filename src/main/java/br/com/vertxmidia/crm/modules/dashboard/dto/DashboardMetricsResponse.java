@@ -10,6 +10,8 @@ public record DashboardMetricsResponse(
         long activeContracts,
         long completedMeetings,
         long overdueTasks,
+        long totalLeads,
+        long totalSales,
         BigDecimal conversionRate,
         BigDecimal clientRoi,
         BigDecimal averageTicket,
@@ -32,6 +34,12 @@ public record DashboardMetricsResponse(
         long productionDeliveries,
         long reviewDeliveries,
         long lateDeliveries,
-        BigDecimal operationalRiskRate
+        BigDecimal operationalRiskRate,
+        BigDecimal customerChurnRate,
+        BigDecimal contractChurnRate,
+        BigDecimal mrrLost,
+        BigDecimal mrrChurnRate,
+        long lostRecurringCustomers,
+        long nonRenewedContracts
 ) {
 }

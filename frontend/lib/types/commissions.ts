@@ -2,6 +2,8 @@ export type CommissionType = "VENDA" | "RENOVACAO" | "RECORRENCIA" | "BONUS" | "
 
 export type CommissionStatus = "PENDENTE" | "APROVADA" | "PAGA" | "CANCELADA";
 
+export type CommissionCalculationType = "PERCENTUAL" | "FIXA";
+
 export type CommissionSale = {
   id: string;
   memberId: string;
@@ -9,10 +11,14 @@ export type CommissionSale = {
   status: CommissionStatus;
   contractId: string | null;
   financeEntryId: string | null;
+  clientId: string | null;
   client: string | null;
+  calculationType: CommissionCalculationType;
   value: number | string;
   percent: number | string;
+  fixedValue: number | string;
   commissionValue: number | string;
+  referenceMonth: string | null;
   goal: number;
   paidAt: string | null;
   active: boolean;
@@ -27,6 +33,7 @@ export type CommissionPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type CommissionMetrics = {
@@ -34,6 +41,7 @@ export type CommissionMetrics = {
   totalRevenue: number | string;
   totalCommission: number | string;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type CommissionMemberStats = {
@@ -59,6 +67,7 @@ export type CommissionRanking = {
   topMarketing: string | null;
   averageGoalProgress: number | string;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type CommissionQuery = {

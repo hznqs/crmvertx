@@ -14,6 +14,15 @@ const inputClassName =
 export function GoalFormFields({ goal }: GoalFormFieldsProps) {
   return (
     <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Nome da meta">
+          <input name="name" defaultValue={goal?.name ?? ""} className={inputClassName} placeholder="Ex.: Faturamento de junho" />
+        </Field>
+        <Field label="Responsavel">
+          <input name="responsible" defaultValue={goal?.responsible ?? ""} className={inputClassName} />
+        </Field>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         <Field label="Tipo">
           <PremiumSelect name="type" required defaultValue={goal?.type ?? "FATURAMENTO"} options={Object.entries(goalTypeLabels).map(([value, label]) => ({ value, label }))} />
@@ -21,8 +30,18 @@ export function GoalFormFields({ goal }: GoalFormFieldsProps) {
         <Field label="Data da meta">
           <DatePicker name="date" required defaultValue={goal?.date ?? ""} />
         </Field>
-        <Field label="Ativa">
-          <PremiumSelect name="active" defaultValue={goal?.active === false ? "false" : "true"} options={[{ value: "true", label: "Ativa" }, { value: "false", label: "Inativa" }]} />
+        <Field label="Status">
+          <PremiumSelect
+            name="status"
+            required
+            defaultValue={goal?.status ?? "EM_ANDAMENTO"}
+            options={[
+              { value: "EM_ANDAMENTO", label: "Em andamento" },
+              { value: "ATINGIDA", label: "Atingida" },
+              { value: "ATRASADA", label: "Atrasada" },
+              { value: "CANCELADA", label: "Cancelada" }
+            ]}
+          />
         </Field>
       </div>
 
@@ -43,6 +62,10 @@ export function GoalFormFields({ goal }: GoalFormFieldsProps) {
           <DatePicker name="periodEnd" defaultValue={goal?.periodEnd ?? ""} />
         </Field>
       </div>
+
+      <Field label="Ativa">
+        <PremiumSelect name="active" defaultValue={goal?.active === false ? "false" : "true"} options={[{ value: "true", label: "Ativa" }, { value: "false", label: "Inativa" }]} />
+      </Field>
     </div>
   );
 }

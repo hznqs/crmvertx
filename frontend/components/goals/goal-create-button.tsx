@@ -6,6 +6,7 @@ import { GoalDialog } from "@/components/goals/goal-dialog";
 import { GoalFormFields } from "@/components/goals/goal-form-fields";
 import { GoalSubmitButton } from "@/components/goals/goal-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 export function GoalCreateButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,10 +18,10 @@ export function GoalCreateButton() {
       </button>
       {isOpen ? (
         <GoalDialog title="Cadastrar meta" eyebrow="Performance" onClose={() => setIsOpen(false)}>
-          <form action={createGoalAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createGoalAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <GoalFormFields />
             <GoalDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar meta" />
-          </form>
+          </SafeActionForm>
         </GoalDialog>
       ) : null}
     </>

@@ -7,6 +7,8 @@ export type DeliveryStatus =
   | "aprovado"
   | "pendente";
 
+export type DeliveryPriority = "BAIXA" | "MEDIA" | "ALTA" | "URGENTE";
+
 export type Delivery = {
   id: string;
   clientId: string | null;
@@ -19,6 +21,9 @@ export type Delivery = {
   owner: string;
   deadline: string;
   status: DeliveryStatus;
+  priority: DeliveryPriority;
+  progress: number;
+  tags: string | null;
   approvedAt: string | null;
   deliveredAt: string | null;
   active: boolean;
@@ -33,6 +38,7 @@ export type DeliveryPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type DeliverySummary = {
@@ -42,6 +48,7 @@ export type DeliverySummary = {
   approved: number;
   late: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type DeliveryQuery = {

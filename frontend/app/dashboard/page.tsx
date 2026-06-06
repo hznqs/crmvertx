@@ -2,6 +2,7 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { DashboardHealth } from "@/components/dashboard/dashboard-health";
 import { DashboardKpis } from "@/components/dashboard/dashboard-kpis";
+import { DashboardCommercial } from "@/components/dashboard/dashboard-commercial";
 import { MeetingsChart } from "@/components/dashboard/meetings-chart";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { fetchDashboardMetrics, fetchMeetingsChart, fetchRevenueChart } from "@/lib/api/dashboard";
@@ -20,6 +21,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     fetchRevenueChart(query),
     fetchMeetingsChart(query)
   ]);
+  const loadError = metrics.loadError;
 
   return (
     <main className="space-y-6">
@@ -42,14 +44,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <DashboardFilters query={query} />
       </section>
 
-      {metrics.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar o dashboard real.
+          {loadError}
         </div>
       ) : null}
 
       <DashboardKpis metrics={metrics} />
+      <DashboardCommercial metrics={metrics} />
       <DashboardHealth metrics={metrics} />
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">

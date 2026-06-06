@@ -4,7 +4,6 @@ import br.com.vertxmidia.crm.modules.client.domain.Client;
 import br.com.vertxmidia.crm.modules.client.domain.ClientPhase;
 import br.com.vertxmidia.crm.modules.client.domain.ClientPriority;
 import br.com.vertxmidia.crm.modules.client.domain.ClientStatus;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +18,10 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
     long countByPhase(ClientPhase phase);
 
+    long countByPhaseAndActiveTrue(ClientPhase phase);
+
+    long countByActiveTrue();
+
     long countByStatusAndActiveTrue(ClientStatus status);
 
     long countByPriorityAndActiveTrue(ClientPriority priority);
@@ -29,12 +32,12 @@ public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecif
 
     Optional<Client> findByIdAndActiveTrue(UUID id);
 
-    @Query("select coalesce(avg(c.contractValue), 0) from Client c where c.phase = :phase")
-    BigDecimal averageTicketByPhase(ClientPhase phase);
+    Optional<Client> findFirstByEmailIgnoreCaseAndActiveTrue(String email);
 
-    @Query("select coalesce(sum(c.contractValue), 0) from Client c where c.phase = :phase")
-    BigDecimal sumContractValueByPhase(ClientPhase phase);
+    Optional<Client> findFirstByPhoneAndActiveTrue(String phone);
 
-    @Query("select count(c) from Client c where c.createdAt >= :since")
+    Optional<Client> findFirstByDocumentAndActiveTrue(String document);
+
+    @Query("select count(c) from Client c where c.active = true and c.createdAt >= :since")
     long countCreatedSince(Instant since);
 }

@@ -42,10 +42,9 @@ export default async function GoalsPage({ searchParams }: GoalsPageProps) {
 
       <GoalMetrics goals={goalPage.content} totalElements={goalPage.totalElements} />
 
-      {goalPage.sourceUnavailable ? (
+      {goalPage.loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar as metas reais.
+          {goalPage.loadError} Verifique se o backend foi reiniciado com a versao mais recente.
         </div>
       ) : null}
 

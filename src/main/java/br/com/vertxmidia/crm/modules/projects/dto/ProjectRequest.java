@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,6 +22,9 @@ public record ProjectRequest(
         @NotNull ProjectStatus status,
         UUID responsibleUserId,
         @Size(max = 5000) String teamMemberIds,
+        LocalDate startDate,
+        @Pattern(regexp = "^(BAIXA|MEDIA|ALTA|URGENTE)$", message = "Prioridade de projeto invalida")
+        String priority,
         @NotNull @Min(0) @Max(100) Integer progress,
         LocalDate slaDueDate,
         @NotNull @DecimalMin("0.00") @Digits(integer = 12, fraction = 2) BigDecimal budget,

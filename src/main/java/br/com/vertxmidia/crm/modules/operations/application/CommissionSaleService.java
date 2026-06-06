@@ -197,9 +197,13 @@ public class CommissionSaleService {
         }
         sale.setContractId(contract.getId());
         sale.setFinanceEntryId(null);
+        sale.setClientId(contract.getClientId());
         sale.setClient(clientName(contract).orElse(projectedClientName(contract, service)));
+        sale.setCalculationType("PERCENTUAL");
         sale.setValue(commissionBaseValue(contract, service));
         sale.setPercent(commissionPercent);
+        sale.setFixedValue(BigDecimal.ZERO);
+        sale.setReferenceMonth(contract.getStartDate().withDayOfMonth(1));
         sale.setGoal(sale.getGoal());
         sale.setActive(true);
     }
@@ -259,9 +263,13 @@ public class CommissionSaleService {
         sale.setStatus(request.status() == null || request.status().isBlank() ? "PENDENTE" : request.status().trim());
         sale.setContractId(request.contractId());
         sale.setFinanceEntryId(request.financeEntryId());
+        sale.setClientId(request.clientId());
         sale.setClient(blankToNull(request.client()));
+        sale.setCalculationType(defaultCalculationType(request.calculationType()));
         sale.setValue(request.value() == null ? BigDecimal.ZERO : request.value());
         sale.setPercent(request.percent() == null ? BigDecimal.ZERO : request.percent());
+        sale.setFixedValue(request.fixedValue() == null ? BigDecimal.ZERO : request.fixedValue());
+        sale.setReferenceMonth(request.referenceMonth());
         sale.setGoal(request.goal() == null ? 0 : request.goal());
         if ("PAGA".equalsIgnoreCase(sale.getStatus()) && sale.getPaidAt() == null) {
             sale.setPaidAt(Instant.now());
@@ -277,10 +285,18 @@ public class CommissionSaleService {
         auditService.logChange("Comissao", sale.getId(), "status", sale.getStatus(), request.status());
         auditService.logChange("Comissao", sale.getId(), "contractId", sale.getContractId(), request.contractId());
         auditService.logChange("Comissao", sale.getId(), "financeEntryId", sale.getFinanceEntryId(), request.financeEntryId());
+        auditService.logChange("Comissao", sale.getId(), "clientId", sale.getClientId(), request.clientId());
         auditService.logChange("Comissao", sale.getId(), "client", sale.getClient(), blankToNull(request.client()));
+        auditService.logChange("Comissao", sale.getId(), "calculationType", sale.getCalculationType(), defaultCalculationType(request.calculationType()));
         auditService.logChange("Comissao", sale.getId(), "value", sale.getValue(), request.value() == null ? BigDecimal.ZERO : request.value());
         auditService.logChange("Comissao", sale.getId(), "percent", sale.getPercent(), request.percent() == null ? BigDecimal.ZERO : request.percent());
+        auditService.logChange("Comissao", sale.getId(), "fixedValue", sale.getFixedValue(), request.fixedValue() == null ? BigDecimal.ZERO : request.fixedValue());
+        auditService.logChange("Comissao", sale.getId(), "referenceMonth", sale.getReferenceMonth(), request.referenceMonth());
         auditService.logChange("Comissao", sale.getId(), "goal", sale.getGoal(), request.goal() == null ? 0 : request.goal());
+    }
+
+    private String defaultCalculationType(String value) {
+        return value == null || value.isBlank() ? "PERCENTUAL" : value.trim().toUpperCase();
     }
 
     private String blankToNull(String value) {

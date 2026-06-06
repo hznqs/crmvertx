@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toServiceSearchParams } from "@/lib/services/query";
 import type { ServicePage, ServiceQuery } from "@/lib/types/services";
 
@@ -24,7 +25,7 @@ export async function fetchServices(query: ServiceQuery): Promise<ServicePage> {
       cache: "no-store"
     });
   } catch {
-    return { ...emptyServicePage, sourceUnavailable: true };
+    return { ...emptyServicePage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -32,7 +33,7 @@ export async function fetchServices(query: ServiceQuery): Promise<ServicePage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar servicos");
+    return { ...emptyServicePage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar servicos") };
   }
 
   return response.json();

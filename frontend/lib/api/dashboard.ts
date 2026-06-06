@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toDashboardSearchParams } from "@/lib/dashboard/query";
 import type {
   DashboardMetrics,
   DashboardQuery,
   MeetingsSalesChartPoint,
-  RevenueChartPoint
+  RevenueChartPoint,
+  ChartPointString
 } from "@/lib/types/dashboard";
 
 const emptyMetrics: DashboardMetrics = {
@@ -37,22 +39,46 @@ const emptyMetrics: DashboardMetrics = {
   productionDeliveries: 0,
   reviewDeliveries: 0,
   lateDeliveries: 0,
-  operationalRiskRate: 0
+  totalLeads: 0,
+  totalSales: 0,
+  operationalRiskRate: 0,
+  customerChurnRate: 0,
+  contractChurnRate: 0,
+  mrrLost: 0,
+  mrrChurnRate: 0,
+  lostRecurringCustomers: 0,
+  nonRenewedContracts: 0
 };
 
 export async function fetchDashboardMetrics(query: DashboardQuery): Promise<DashboardMetrics> {
-  return dashboardFetch(`/api/dashboard/metrics?${toDashboardSearchParams(query).toString()}`, emptyMetrics, "Nao foi possivel carregar metricas do dashboard");
+  return dashboardFetch(`/api/dashboard/metrics?${toDashboardSearchParams(query).toString()}`, emptyMetrics);
 }
 
 export async function fetchRevenueChart(query: DashboardQuery): Promise<RevenueChartPoint[]> {
-  return dashboardFetch(`/api/dashboard/revenue-chart?${toDashboardSearchParams(query).toString()}`, [], "Nao foi possivel carregar grafico de receita");
+  return dashboardFetch(`/api/dashboard/revenue-chart?${toDashboardSearchParams(query).toString()}`, []);
 }
 
 export async function fetchMeetingsChart(query: DashboardQuery): Promise<MeetingsSalesChartPoint[]> {
-  return dashboardFetch(`/api/dashboard/meetings-chart?${toDashboardSearchParams(query).toString()}`, [], "Nao foi possivel carregar grafico comercial");
+  return dashboardFetch(`/api/dashboard/meetings-chart?${toDashboardSearchParams(query).toString()}`, []);
 }
 
-async function dashboardFetch<T>(endpoint: string, emptyValue: T, errorMessage: string): Promise<T> {
+export async function fetchPipelineFunnel(query: DashboardQuery): Promise<ChartPointString[]> {
+  return dashboardFetch(`/api/dashboard/pipeline-funnel?${toDashboardSearchParams(query).toString()}`, []);
+}
+
+export async function fetchLeadsOrigin(query: DashboardQuery): Promise<ChartPointString[]> {
+  return dashboardFetch(`/api/dashboard/leads-origin?${toDashboardSearchParams(query).toString()}`, []);
+}
+
+export async function fetchTopServices(query: DashboardQuery): Promise<ChartPointString[]> {
+  return dashboardFetch(`/api/dashboard/top-services?${toDashboardSearchParams(query).toString()}`, []);
+}
+
+export async function fetchProjectsStatus(query: DashboardQuery): Promise<ChartPointString[]> {
+  return dashboardFetch(`/api/dashboard/projects-status?${toDashboardSearchParams(query).toString()}`, []);
+}
+
+async function dashboardFetch<T>(endpoint: string, emptyValue: T): Promise<T> {
   const apiBaseUrl = process.env.CRM_API_BASE_URL ?? "http://localhost:8080";
   const cookieStore = await cookies();
   const token = cookieStore.get("crm_access_token")?.value;
@@ -67,7 +93,7 @@ async function dashboardFetch<T>(endpoint: string, emptyValue: T, errorMessage: 
   } catch {
     return Array.isArray(emptyValue)
       ? emptyValue
-      : ({ ...emptyValue, sourceUnavailable: true } as T);
+      : ({ ...emptyValue, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." } as T);
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -75,7 +101,9 @@ async function dashboardFetch<T>(endpoint: string, emptyValue: T, errorMessage: 
   }
 
   if (!response.ok) {
-    throw new Error(errorMessage);
+    return Array.isArray(emptyValue)
+      ? emptyValue
+      : ({ ...emptyValue, loadError: await backendErrorMessage(response, "Nao foi possivel carregar os indicadores.") } as T);
   }
 
   return response.json();

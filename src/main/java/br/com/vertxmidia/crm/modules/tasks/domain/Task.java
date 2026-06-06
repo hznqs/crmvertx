@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
@@ -24,7 +25,8 @@ import org.hibernate.annotations.UuidGenerator;
         @Index(name = "idx_crm_tasks_delivery", columnList = "delivery_id"),
         @Index(name = "idx_crm_tasks_responsible", columnList = "responsible_user_id"),
         @Index(name = "idx_crm_tasks_status_due", columnList = "status, due_date"),
-        @Index(name = "idx_crm_tasks_active_due", columnList = "active, due_date")
+        @Index(name = "idx_crm_tasks_active_due", columnList = "active, due_date"),
+        @Index(name = "idx_crm_tasks_project_sort_order", columnList = "project_id, sort_order")
     }
 )
 public class Task extends TimestampedEntity {
@@ -41,6 +43,15 @@ public class Task extends TimestampedEntity {
     @Column(name = "delivery_id")
     private UUID deliveryId;
 
+    @Column(name = "client_id")
+    private UUID clientId;
+
+    @Column(name = "contract_id")
+    private UUID contractId;
+
+    @Column(name = "service_id")
+    private UUID serviceId;
+
     @Column(name = "responsible_user_id")
     private UUID responsibleUserId;
 
@@ -51,6 +62,12 @@ public class Task extends TimestampedEntity {
 
     @Column(columnDefinition = "text")
     private String description;
+
+    @Column(columnDefinition = "text")
+    private String checklist;
+
+    @Column(columnDefinition = "text")
+    private String comments;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -68,6 +85,12 @@ public class Task extends TimestampedEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
 
     @Column(name = "created_by")
     private UUID createdBy;
@@ -95,6 +118,30 @@ public class Task extends TimestampedEntity {
         this.deliveryId = deliveryId;
     }
 
+    public UUID getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(UUID clientId) {
+        this.clientId = clientId;
+    }
+
+    public UUID getContractId() {
+        return contractId;
+    }
+
+    public void setContractId(UUID contractId) {
+        this.contractId = contractId;
+    }
+
+    public UUID getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(UUID serviceId) {
+        this.serviceId = serviceId;
+    }
+
     public UUID getResponsibleUserId() {
         return responsibleUserId;
     }
@@ -117,6 +164,22 @@ public class Task extends TimestampedEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getChecklist() {
+        return checklist;
+    }
+
+    public void setChecklist(String checklist) {
+        this.checklist = checklist;
+    }
+
+    public String getComments() {
+        return comments;
+    }
+
+    public void setComments(String comments) {
+        this.comments = comments;
     }
 
     public TaskPriority getPriority() {
@@ -149,6 +212,22 @@ public class Task extends TimestampedEntity {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(Instant completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public UUID getCreatedBy() {

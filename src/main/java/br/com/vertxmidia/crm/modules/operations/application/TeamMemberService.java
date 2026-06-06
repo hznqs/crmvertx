@@ -97,6 +97,8 @@ public class TeamMemberService {
         member.setUserId(request.userId());
         member.setName(request.name().trim());
         member.setRole(request.role().trim());
+        member.setFunctionName(blankToNull(request.functionName()));
+        member.setJoinedAt(request.joinedAt());
         member.setEmail(blankToNull(request.email()));
         member.setPhone(blankToNull(request.phone()));
         member.setTasks(request.tasks() == null ? 0 : request.tasks());
@@ -115,6 +117,8 @@ public class TeamMemberService {
         auditService.logChange("Membro da equipe", member.getId(), "userId", member.getUserId(), request.userId());
         auditService.logChange("Membro da equipe", member.getId(), "name", member.getName(), request.name().trim());
         auditService.logChange("Membro da equipe", member.getId(), "role", member.getRole(), request.role().trim());
+        auditService.logChange("Membro da equipe", member.getId(), "functionName", member.getFunctionName(), blankToNull(request.functionName()));
+        auditService.logChange("Membro da equipe", member.getId(), "joinedAt", member.getJoinedAt(), request.joinedAt());
         auditService.logChange("Membro da equipe", member.getId(), "email", member.getEmail(), blankToNull(request.email()));
         auditService.logChange("Membro da equipe", member.getId(), "phone", member.getPhone(), blankToNull(request.phone()));
         auditService.logChange("Membro da equipe", member.getId(), "tasks", member.getTasks(), request.tasks() == null ? 0 : request.tasks());

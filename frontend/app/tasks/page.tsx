@@ -25,6 +25,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     fetchProjects(buildProjectQuery({ size: "100", active: "true" }))
   ]);
   const projectOptions = projectPage.content.map(toProjectOption);
+  const loadError = taskPage.loadError ?? projectPage.loadError;
 
   return (
     <main className="space-y-6">
@@ -48,10 +49,9 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
       <TaskMetrics tasks={taskPage.content} totalElements={taskPage.totalElements} />
 
-      {taskPage.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar as tarefas reais.
+          {loadError}
         </div>
       ) : null}
 

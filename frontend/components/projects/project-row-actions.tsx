@@ -1,13 +1,15 @@
 "use client";
 
+import { CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ProjectDialogFooter } from "@/components/projects/project-create-button";
 import { ProjectDialog } from "@/components/projects/project-dialog";
 import { ProjectFormFields } from "@/components/projects/project-form-fields";
-import { ProjectSubmitButton } from "@/components/projects/project-submit-button";
-import { ReadOnlyActionLabel, RowActionButton } from "@/components/ui/row-actions";
+import { ActionMenu, type ActionMenuAction } from "@/components/ui/action-menu";
+import { ReadOnlyActionLabel } from "@/components/ui/row-actions";
 import { FormattedInput } from "@/components/ui/formatted-input";
 import { PremiumSelect } from "@/components/ui/premium-select";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { deleteProjectAction, updateProjectAction, updateProjectStatusAction } from "@/lib/projects/actions";
 import { projectStatusLabels } from "@/lib/projects/labels";
 import type { ModuleActionPermissions } from "@/lib/auth/permissions";
@@ -30,36 +32,21 @@ export function ProjectRowActions({ project, clientOptions, serviceOptions, acti
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {actionPermissions.canWrite ? (
-        <>
-          <RowActionButton onClick={() => setIsEditing(true)}>
-            Editar
-          </RowActionButton>
-          <RowActionButton tone="brand" onClick={() => setIsChangingStatus(true)}>
-            Status
-          </RowActionButton>
-        </>
-      ) : null}
-      {actionPermissions.canManage ? (
-        <form action={deleteProjectAction}>
-          <input type="hidden" name="id" value={project.id} />
-          <ProjectSubmitButton idleLabel="Excluir" pendingLabel="Excluindo..." tone="danger" />
-        </form>
-      ) : null}
+      <ActionMenu actions={projectActions()} />
 
       {isEditing ? (
         <ProjectDialog title="Editar projeto" eyebrow={project.name} onClose={() => setIsEditing(false)}>
-          <form action={updateProjectAction} className="mt-5 space-y-5">
+          <SafeActionForm action={updateProjectAction} onSuccess={() => setIsEditing(false)} className="mt-5 space-y-5">
             <input type="hidden" name="id" value={project.id} />
             <ProjectFormFields project={project} clientOptions={clientOptions} serviceOptions={serviceOptions} />
             <ProjectDialogFooter onClose={() => setIsEditing(false)} submitLabel="Salvar alteracoes" />
-          </form>
+          </SafeActionForm>
         </ProjectDialog>
       ) : null}
 
       {isChangingStatus ? (
         <ProjectDialog title="Atualizar status" eyebrow={project.name} onClose={() => setIsChangingStatus(false)}>
-          <form action={updateProjectStatusAction} className="mt-5 space-y-5">
+          <SafeActionForm action={updateProjectStatusAction} onSuccess={() => setIsChangingStatus(false)} className="mt-5 space-y-5">
             <input type="hidden" name="id" value={project.id} />
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2">
@@ -72,9 +59,40 @@ export function ProjectRowActions({ project, clientOptions, serviceOptions, acti
               </label>
             </div>
             <ProjectDialogFooter onClose={() => setIsChangingStatus(false)} submitLabel="Atualizar status" />
-          </form>
+          </SafeActionForm>
         </ProjectDialog>
       ) : null}
     </div>
   );
+
+  function projectActions(): ActionMenuAction[] {
+    return [
+      {
+        label: "Editar",
+        icon: Pencil,
+        onSelect: () => setIsEditing(true),
+        hidden: !actionPermissions.canWrite
+      },
+      {
+        label: "Atualizar status",
+        icon: CheckCircle,
+        variant: "secondary",
+        onSelect: () => setIsChangingStatus(true),
+        hidden: !actionPermissions.canWrite
+      },
+      {
+        label: "Arquivar projeto",
+        icon: Trash2,
+        variant: "danger",
+        separatorBefore: true,
+        formAction: deleteProjectAction,
+        fields: { id: project.id },
+        hidden: !actionPermissions.canManage,
+        requiresConfirmation: true,
+        confirmationTitle: "Arquivar projeto",
+        confirmationDescription: "Tem certeza que deseja arquivar este projeto? Tarefas e indicadores relacionados podem ser afetados.",
+        confirmationActionLabel: "Arquivar"
+      }
+    ];
+  }
 }

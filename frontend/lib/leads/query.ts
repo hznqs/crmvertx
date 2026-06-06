@@ -10,7 +10,8 @@ export function buildLeadQuery(searchParams: LeadSearchParams): LeadQuery {
     commercialStage: normalize(searchParams.commercialStage),
     temperature: normalize(searchParams.temperature),
     origin: normalize(searchParams.origin),
-    status: normalize(searchParams.status)
+    status: normalize(searchParams.status),
+    active: normalize(searchParams.active) || "true"
   };
 }
 

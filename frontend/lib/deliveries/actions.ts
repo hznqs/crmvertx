@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { DeliveryStatus } from "@/lib/types/deliveries";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
+import type { DeliveryPriority, DeliveryStatus } from "@/lib/types/deliveries";
 
 type DeliveryPayload = {
   clientId: string | null;
@@ -15,38 +17,49 @@ type DeliveryPayload = {
   owner: string;
   deadline: string;
   status: DeliveryStatus;
+  priority: DeliveryPriority;
+  progress: number;
+  tags: string;
   active: boolean;
 };
 
-export async function createDeliveryAction(formData: FormData) {
-  await mutateDeliveryBackend("/api/deliveries", "POST", deliveryPayloadFromForm(formData));
-  revalidatePath("/deliveries");
+export async function createDeliveryAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateDeliveryBackend("/api/deliveries", "POST", deliveryPayloadFromForm(formData));
+    revalidatePath("/deliveries");
+  }, "Nao foi possivel salvar a entrega");
 }
 
-export async function updateDeliveryAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}`, "PUT", deliveryPayloadFromForm(formData));
-  revalidatePath("/deliveries");
+export async function updateDeliveryAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}`, "PUT", deliveryPayloadFromForm(formData));
+    revalidatePath("/deliveries");
+  }, "Nao foi possivel salvar a entrega");
 }
 
-export async function updateDeliveryStatusAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  const status = requiredString(formData.get("status")) as DeliveryStatus;
-  await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}/status`, "PATCH", { status });
-  revalidatePath("/deliveries");
-  revalidatePath("/deliveries/kanban");
+export async function updateDeliveryStatusAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    const status = requiredString(formData.get("status")) as DeliveryStatus;
+    await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}/status`, "PATCH", { status });
+    revalidatePath("/deliveries");
+  }, "Nao foi possivel atualizar o status da entrega");
 }
 
-export async function updateDeliveryStatusDirectAction(id: string, status: DeliveryStatus) {
-  await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}/status`, "PATCH", { status });
-  revalidatePath("/deliveries");
-  revalidatePath("/deliveries/kanban");
+export async function updateDeliveryStatusDirectAction(id: string, status: DeliveryStatus): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}/status`, "PATCH", { status });
+    revalidatePath("/deliveries");
+  }, "Nao foi possivel atualizar o status da entrega");
 }
 
-export async function deleteDeliveryAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/deliveries");
+export async function deleteDeliveryAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateDeliveryBackend(`/api/deliveries/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/deliveries");
+  }, "Nao foi possivel excluir a entrega");
 }
 
 function deliveryPayloadFromForm(formData: FormData): DeliveryPayload {
@@ -61,6 +74,9 @@ function deliveryPayloadFromForm(formData: FormData): DeliveryPayload {
     owner: requiredString(formData.get("owner")),
     deadline: requiredString(formData.get("deadline")),
     status: requiredString(formData.get("status")) as DeliveryStatus,
+    priority: requiredString(formData.get("priority")) as DeliveryPriority,
+    progress: clamp(numberFromForm(formData.get("progress")), 0, 100),
+    tags: stringFromForm(formData.get("tags")),
     active: formData.get("active") !== "false"
   };
 }
@@ -104,4 +120,12 @@ function nullableString(value: FormDataEntryValue | null) {
 
 function stringFromForm(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
+}
+
+function numberFromForm(value: FormDataEntryValue | null) {
+  return numberFromFormValue(value);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }

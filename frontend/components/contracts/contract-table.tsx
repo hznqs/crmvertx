@@ -38,7 +38,7 @@ export function ContractTable({
               <th className="px-5 py-4 font-bold">Status</th>
               <th className="px-5 py-4 font-bold">Vigencia</th>
               <th className="px-5 py-4 font-bold">Mensalidade</th>
-              <th className="px-5 py-4 font-bold">Total</th>
+              <th className="px-5 py-4 font-bold">Resumo financeiro</th>
               <th className="px-5 py-4 font-bold">Renovacao</th>
               <th className="px-5 py-4 font-bold">Acoes</th>
             </tr>
@@ -79,6 +79,9 @@ function ContractRow({
   actionPermissions: ModuleActionPermissions;
 }) {
   const clientLabel = clientOptions.find((client) => client.id === contract.clientId)?.label ?? "Sem cliente";
+  const servicesLabel = contract.serviceItems?.length
+    ? contract.serviceItems.map((item) => item.serviceName).join(", ")
+    : serviceOptions.find((service) => service.id === contract.serviceId)?.label ?? "Sem servico";
 
   return (
     <tr className="transition hover:bg-white/[0.035]">
@@ -86,6 +89,8 @@ function ContractRow({
         <div className="min-w-64">
           <p className="font-semibold text-white">{contract.plan}</p>
           <p className="mt-1 text-xs text-zinc-500">{clientLabel}</p>
+          <p className="mt-1 max-w-xs truncate text-xs text-brand-100/80">{servicesLabel}</p>
+          <p className="mt-1 text-xs text-zinc-500">{contract.recurring ? "Recorrente para MRR/churn" : "Avulso, fora do churn"}</p>
         </div>
       </td>
       <td className="px-5 py-4">
@@ -97,8 +102,21 @@ function ContractRow({
         <div>{formatDate(contract.startDate)}</div>
         <div className="mt-1 text-xs text-zinc-500">ate {formatDate(contract.endDate)}</div>
       </td>
-      <td className="px-5 py-4 font-semibold text-white">{formatCurrency(contract.monthlyValue)}</td>
-      <td className="px-5 py-4 text-zinc-300">{formatCurrency(contract.totalValue)}</td>
+      <td className="px-5 py-4 font-semibold text-white">
+        {formatCurrency(contract.monthlyValue)}
+        {Number(contract.oneTimeServicesValue ?? 0) > 0 ? (
+          <div className="mt-1 text-xs text-zinc-500">+ {formatCurrency(contract.oneTimeServicesValue)} avulso</div>
+        ) : null}
+        {Number(contract.mrrLost ?? 0) > 0 ? (
+          <div className="mt-1 text-xs text-rose-200">MRR perdido {formatCurrency(contract.mrrLost)}</div>
+        ) : null}
+      </td>
+      <td className="px-5 py-4 text-zinc-300">
+        <div className="font-semibold text-white">{formatCurrency(contract.totalValue)}</div>
+        <div className="mt-1 text-xs text-zinc-500">
+          Impl. {formatCurrency(contract.implementationFee ?? 0)} · Desc. {formatCurrency(contract.discount ?? 0)}
+        </div>
+      </td>
       <td className="px-5 py-4 text-zinc-300">
         <div>{contract.autoRenew ? "Automatica" : "Manual"}</div>
         <div className="mt-1 text-xs text-zinc-500">dia {contract.billingDueDay ?? "-"}</div>

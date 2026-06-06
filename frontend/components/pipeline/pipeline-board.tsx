@@ -5,6 +5,7 @@ import { Building2, CalendarClock, DollarSign, Mail, Phone, Search, UserRound } 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { EnterpriseKanban, type EnterpriseKanbanColumn } from "@/components/kanban/enterprise-kanban";
+import { ensureActionSucceeded } from "@/lib/actions/result";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { PremiumSelect } from "@/components/ui/premium-select";
 import { formatCurrency } from "@/lib/formatters";
@@ -35,20 +36,23 @@ const columnMeta: Record<CommercialStage, { description: string; accentClassName
 };
 
 export function PipelineBoard({ leads }: PipelineBoardProps) {
-  const [localLeads, setLocalLeads] = useState(leads);
+  const visibleLeads = useMemo(() => leads.filter(isVisiblePipelineLead), [leads]);
+  const [localLeads, setLocalLeads] = useState(visibleLeads);
   const [search, setSearch] = useState("");
   const [temperature, setTemperature] = useState("");
   const [lostDialog, setLostDialog] = useState<LostDialogState | null>(null);
   const [isPending, startTransition] = useTransition();
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ leadId, stage, lostReason }: { leadId: string; stage: CommercialStage; lostReason?: string }) =>
-      updatePipelineLeadStageAction(leadId, stage, lostReason ?? ""),
+    mutationFn: async ({ leadId, stage, lostReason }: { leadId: string; stage: CommercialStage; lostReason?: string }) => {
+      ensureActionSucceeded(await updatePipelineLeadStageAction(leadId, stage, lostReason ?? ""));
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["leads"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     }
   });
+
   const filteredLeads = useMemo(() => filterLeads(localLeads, search, temperature), [localLeads, search, temperature]);
   const groupedLeads = useMemo(() => groupLeadsByStage(filteredLeads), [filteredLeads]);
   const columns = useMemo<EnterpriseKanbanColumn<CommercialStage, Lead>[]>(() => (
@@ -178,7 +182,7 @@ function PipelineCard({ lead }: { lead: Lead }) {
       </div>
 
       <p className="line-clamp-2 rounded-xl border border-line bg-white/[0.025] p-3 text-xs leading-5 text-zinc-500">
-        {lead.notes || "Proxima acao: qualificar decisores, budget e timing. Timeline e atividade recente preparadas para realtime."}
+        {lead.notes || "Proxima acao: qualificar decisores, budget e timing para avancar a oportunidade com seguranca."}
       </p>
 
       <div className="flex flex-wrap gap-1.5">
@@ -248,6 +252,10 @@ function filterLeads(leads: Lead[], search: string, temperature: string) {
     return (!normalizedSearch || searchable.includes(normalizedSearch))
       && (!temperature || lead.temperature === temperature);
   });
+}
+
+function isVisiblePipelineLead(lead: Lead) {
+  return lead.active !== false && lead.status !== "CONVERTED" && !lead.convertedClientId;
 }
 
 function temperatureTone(temperature: Lead["temperature"]) {

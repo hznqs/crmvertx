@@ -33,24 +33,39 @@ export function ProjectFormFields({
         <Field label="Status">
           <PremiumSelect name="status" required defaultValue={project?.status ?? "PLANEJAMENTO"} options={toOptions(projectStatusLabels)} />
         </Field>
+        <Field label="Prioridade">
+          <PremiumSelect
+            name="priority"
+            required
+            defaultValue={project?.priority ?? "MEDIA"}
+            options={[
+              { value: "BAIXA", label: "Baixa" },
+              { value: "MEDIA", label: "Media" },
+              { value: "ALTA", label: "Alta" },
+              { value: "URGENTE", label: "Urgente" }
+            ]}
+          />
+        </Field>
         <Field label="Progresso">
           <FormattedInput name="progress" mask="percentage" required defaultValue={project?.progress ?? 0} />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Inicio">
+          <DatePicker name="startDate" defaultValue={project?.startDate ?? ""} />
         </Field>
         <Field label="SLA">
           <DatePicker name="slaDueDate" defaultValue={project?.slaDueDate ?? ""} />
         </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4">
         <Field label="Servico">
           <PremiumSelect name="serviceId" defaultValue={project?.serviceId ?? ""} placeholder="Nao vinculado" options={selectOptions(serviceOptions, "Nao vinculado")} searchable />
         </Field>
-        <Field label="Contrato">
-          <input name="contractId" defaultValue={project?.contractId ?? ""} placeholder="UUID opcional" className={inputClassName} />
-        </Field>
-        <Field label="Responsavel">
-          <input name="responsibleUserId" defaultValue={project?.responsibleUserId ?? ""} placeholder="UUID opcional" className={inputClassName} />
-        </Field>
+        <input type="hidden" name="contractId" value={project?.contractId ?? ""} />
+        <input type="hidden" name="responsibleUserId" value={project?.responsibleUserId ?? ""} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -66,9 +81,7 @@ export function ProjectFormFields({
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1fr_180px]">
-        <Field label="Equipe">
-          <input name="teamMemberIds" defaultValue={project?.teamMemberIds ?? ""} placeholder="IDs ou nomes separados por virgula" className={inputClassName} />
-        </Field>
+        <input type="hidden" name="teamMemberIds" value={project?.teamMemberIds ?? ""} />
         <Field label="Ativo">
           <PremiumSelect name="active" defaultValue={project?.active === false ? "false" : "true"} options={booleanOptions("Ativo", "Inativo")} />
         </Field>

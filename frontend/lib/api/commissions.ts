@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toCommissionSearchParams } from "@/lib/commissions/query";
 import type { CommissionMetrics, CommissionPage, CommissionQuery, CommissionRanking } from "@/lib/types/commissions";
 
@@ -52,7 +53,7 @@ async function commissionFetch<T>(endpoint: string, emptyValue: T, errorMessage:
       cache: "no-store"
     });
   } catch {
-    return { ...emptyValue, sourceUnavailable: true };
+    return { ...emptyValue, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -60,7 +61,7 @@ async function commissionFetch<T>(endpoint: string, emptyValue: T, errorMessage:
   }
 
   if (!response.ok) {
-    throw new Error(errorMessage);
+    return { ...emptyValue, loadError: await backendErrorMessage(response, errorMessage) };
   }
 
   return response.json();

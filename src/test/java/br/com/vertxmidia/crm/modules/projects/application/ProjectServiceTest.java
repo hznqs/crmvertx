@@ -1,10 +1,13 @@
 package br.com.vertxmidia.crm.modules.projects.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
+import br.com.vertxmidia.crm.modules.client.domain.Client;
 import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.application.DeliveryService;
 import br.com.vertxmidia.crm.modules.operations.domain.Contract;
+import br.com.vertxmidia.crm.modules.operations.domain.ContractServiceItem;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractServiceItemRepository;
 import br.com.vertxmidia.crm.modules.projects.domain.Project;
 import br.com.vertxmidia.crm.modules.projects.domain.ProjectStatus;
 import br.com.vertxmidia.crm.modules.projects.infrastructure.ProjectRepository;
@@ -14,24 +17,44 @@ import br.com.vertxmidia.crm.modules.tasks.application.TaskService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProjectServiceTest {
 
     @Test
-    void syncContractProjectCreatesProjectFromActiveContractAndService() {
+    void syncContractProjectDoesNotCreateMissingProjectAutomatically() {
+        ProjectRepository projects = mock(ProjectRepository.class);
+        Contract contract = activeContract();
+        when(projects.findFirstByContractIdAndActiveTrue(contract.getId())).thenReturn(Optional.empty());
+
+        ProjectService projectService = newProjectService(projects, mock(ServiceOfferingRepository.class), mock(ContractServiceItemRepository.class), mock(TaskService.class));
+
+        var response = projectService.syncContractProject(contract);
+
+        assertThat(response).isEmpty();
+        verify(projects, never()).save(any(Project.class));
+    }
+
+    @Test
+    void generateProjectFromContractCreatesProjectAndTasksExplicitly() {
         ProjectRepository projects = mock(ProjectRepository.class);
         ServiceOfferingRepository services = mock(ServiceOfferingRepository.class);
+        ContractServiceItemRepository items = mock(ContractServiceItemRepository.class);
+        TaskService tasks = mock(TaskService.class);
         Contract contract = activeContract();
+        ContractServiceItem item = contractItem(contract);
         ServiceOffering serviceOffering = serviceOffering(contract.getServiceId());
         UUID projectId = UUID.randomUUID();
 
@@ -45,79 +68,67 @@ class ProjectServiceTest {
             return project;
         });
 
-        ProjectService projectService = newProjectService(projects, services);
+        ProjectService projectService = newProjectService(projects, services, items, tasks);
 
-        var response = projectService.syncContractProject(contract).orElseThrow();
+        var response = projectService.generateProjectFromContract(contract, List.of(item));
 
         assertThat(response.id()).isEqualTo(projectId);
         assertThat(response.clientId()).isEqualTo(contract.getClientId());
         assertThat(response.contractId()).isEqualTo(contract.getId());
         assertThat(response.serviceId()).isEqualTo(contract.getServiceId());
-        assertThat(response.name()).isEqualTo("CRM Premium - Mensalidade CRM");
+        assertThat(response.name()).contains("Cliente VX", "CRM Premium");
         assertThat(response.status()).isEqualTo(ProjectStatus.PLANEJAMENTO);
         assertThat(response.progress()).isZero();
         assertThat(response.slaDueDate()).isEqualTo(LocalDate.of(2026, 5, 15));
         assertThat(response.budget()).isEqualByComparingTo("15000.00");
         assertThat(response.estimatedCost()).isEqualByComparingTo("9000.0000");
-        assertThat(response.actualCost()).isEqualByComparingTo("0");
-        assertThat(response.description()).contains("Briefing", "Checklist padrao");
-        assertThat(response.active()).isTrue();
+        assertThat(response.description()).contains("Servicos contratados", "CRM Premium");
+        verify(tasks).createContractProjectTasks(any(Project.class), any(Contract.class), any());
     }
 
     @Test
-    void syncContractProjectUpdatesExistingProjectWithoutLosingOperationalOwnership() {
+    void generateProjectFromContractReturnsExistingProjectWithoutDuplicating() {
         ProjectRepository projects = mock(ProjectRepository.class);
-        ServiceOfferingRepository services = mock(ServiceOfferingRepository.class);
         Contract contract = activeContract();
-        ServiceOffering serviceOffering = serviceOffering(contract.getServiceId());
         Project currentProject = currentProject(contract);
-
         when(projects.findFirstByContractIdAndActiveTrue(contract.getId())).thenReturn(Optional.of(currentProject));
-        when(services.findByIdAndActiveTrue(contract.getServiceId())).thenReturn(Optional.of(serviceOffering));
-        when(projects.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ProjectService projectService = newProjectService(projects, services);
+        ProjectService projectService = newProjectService(projects, mock(ServiceOfferingRepository.class), mock(ContractServiceItemRepository.class), mock(TaskService.class));
 
-        var response = projectService.syncContractProject(contract).orElseThrow();
+        var response = projectService.generateProjectFromContract(contract, List.of(contractItem(contract)));
 
         assertThat(response.id()).isEqualTo(currentProject.getId());
-        assertThat(response.responsibleUserId()).isEqualTo(currentProject.getResponsibleUserId());
-        assertThat(response.teamMemberIds()).isEqualTo(currentProject.getTeamMemberIds());
-        assertThat(response.status()).isEqualTo(ProjectStatus.EM_EXECUCAO);
-        assertThat(response.progress()).isEqualTo(45);
-        assertThat(response.actualCost()).isEqualByComparingTo("700.00");
-        assertThat(response.budget()).isEqualByComparingTo("15000.00");
-        verify(projects).save(currentProject);
+        verify(projects, never()).save(any(Project.class));
     }
 
     @Test
-    void syncContractProjectCancelsProjectWhenContractStopsGeneratingProjects() {
-        ProjectRepository projects = mock(ProjectRepository.class);
+    void generateProjectFromContractRejectsInactiveContract() {
         Contract contract = activeContract();
         contract.setStatus("cancelado");
-        Project currentProject = currentProject(contract);
+        ProjectService projectService = newProjectService(mock(ProjectRepository.class), mock(ServiceOfferingRepository.class), mock(ContractServiceItemRepository.class), mock(TaskService.class));
 
-        when(projects.findFirstByContractIdAndActiveTrue(contract.getId())).thenReturn(Optional.of(currentProject));
-        when(projects.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        ProjectService projectService = newProjectService(projects, mock(ServiceOfferingRepository.class));
-
-        var response = projectService.syncContractProject(contract);
-
-        assertThat(response).isEmpty();
-        assertThat(currentProject.getStatus()).isEqualTo(ProjectStatus.CANCELADO);
-        assertThat(currentProject.isActive()).isFalse();
-        verify(projects).save(currentProject);
+        assertThatThrownBy(() -> projectService.generateProjectFromContract(contract, List.of(contractItem(contract))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Somente contratos ativos");
     }
 
-    private ProjectService newProjectService(ProjectRepository projects, ServiceOfferingRepository services) {
+    private ProjectService newProjectService(ProjectRepository projects,
+                                             ServiceOfferingRepository services,
+                                             ContractServiceItemRepository items,
+                                             TaskService tasks) {
+        ClientRepository clients = mock(ClientRepository.class);
+        Client client = new Client();
+        client.setName("Cliente VX");
+        client.setActive(true);
+        when(clients.findByIdAndActiveTrue(any())).thenReturn(Optional.of(client));
         return new ProjectService(
                 projects,
-                mock(ClientRepository.class),
+                clients,
                 mock(ContractRepository.class),
+                items,
                 services,
                 mock(DeliveryService.class),
-                mock(TaskService.class),
+                tasks,
                 new ProjectMapper(),
                 mock(AuditService.class)
         );
@@ -141,6 +152,16 @@ class ProjectServiceTest {
         contract.setBillingDueDay(10);
         contract.setActive(true);
         return contract;
+    }
+
+    private ContractServiceItem contractItem(Contract contract) {
+        ContractServiceItem item = new ContractServiceItem();
+        item.setContractId(contract.getId());
+        item.setServiceId(contract.getServiceId());
+        item.setServiceNameSnapshot("CRM Premium");
+        item.setServiceValueSnapshot(new BigDecimal("2500.00"));
+        item.setActive(true);
+        return item;
     }
 
     private ServiceOffering serviceOffering(UUID id) {
@@ -167,11 +188,8 @@ class ProjectServiceTest {
         project.setClientId(contract.getClientId());
         project.setContractId(contract.getId());
         project.setServiceId(contract.getServiceId());
-        project.setName("Projeto antigo");
-        project.setDescription("Descricao antiga");
+        project.setName("Projeto existente");
         project.setStatus(ProjectStatus.EM_EXECUCAO);
-        project.setResponsibleUserId(UUID.randomUUID());
-        project.setTeamMemberIds(UUID.randomUUID() + "," + UUID.randomUUID());
         project.setProgress(45);
         project.setSlaDueDate(LocalDate.of(2026, 5, 20));
         project.setBudget(new BigDecimal("8000.00"));

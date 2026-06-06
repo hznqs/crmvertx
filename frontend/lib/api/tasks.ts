@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toTaskSearchParams } from "@/lib/tasks/query";
 import type { TaskPage, TaskQuery } from "@/lib/types/tasks";
 
@@ -24,7 +25,7 @@ export async function fetchTasks(query: TaskQuery): Promise<TaskPage> {
       cache: "no-store"
     });
   } catch {
-    return { ...emptyTaskPage, sourceUnavailable: true };
+    return { ...emptyTaskPage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -32,7 +33,7 @@ export async function fetchTasks(query: TaskQuery): Promise<TaskPage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar tarefas");
+    return { ...emptyTaskPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar tarefas") };
   }
 
   return response.json();

@@ -50,6 +50,9 @@ public class ServiceOffering extends TimestampedEntity {
     @Column(columnDefinition = "text")
     private String description;
 
+    @Column(columnDefinition = "text")
+    private String notes;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "billing_type", nullable = false, length = 30)
@@ -119,6 +122,14 @@ public class ServiceOffering extends TimestampedEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 
     public ServiceBillingType getBillingType() {

@@ -2,51 +2,70 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
 import type { TaskPriority, TaskStatus } from "@/lib/types/tasks";
 
 type TaskPayload = {
   projectId: string;
   deliveryId: string | null;
+  clientId: string | null;
+  contractId: string | null;
+  serviceId: string | null;
   responsibleUserId: string | null;
   title: string;
   description: string;
+  checklist: string;
+  comments: string;
   priority: TaskPriority;
   dueDate: string;
   status: TaskStatus;
   active: boolean;
 };
 
-export async function createTaskAction(formData: FormData) {
-  await mutateTaskBackend("/api/tasks", "POST", taskPayloadFromForm(formData));
-  revalidatePath("/tasks");
+export async function createTaskAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateTaskBackend("/api/tasks", "POST", taskPayloadFromForm(formData));
+    revalidatePath("/tasks");
+  }, "Nao foi possivel salvar a tarefa");
 }
 
-export async function updateTaskAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateTaskBackend(`/api/tasks/${encodeURIComponent(id)}`, "PUT", taskPayloadFromForm(formData));
-  revalidatePath("/tasks");
+export async function updateTaskAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateTaskBackend(`/api/tasks/${encodeURIComponent(id)}`, "PUT", taskPayloadFromForm(formData));
+    revalidatePath("/tasks");
+  }, "Nao foi possivel salvar a tarefa");
 }
 
-export async function updateTaskStatusAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  const status = requiredString(formData.get("status")) as TaskStatus;
-  await mutateTaskBackend(`/api/tasks/${encodeURIComponent(id)}/status`, "PATCH", { status });
-  revalidatePath("/tasks");
+export async function updateTaskStatusAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    const status = requiredString(formData.get("status")) as TaskStatus;
+    await mutateTaskBackend(`/api/tasks/${encodeURIComponent(id)}/status`, "PATCH", { status });
+    revalidatePath("/tasks");
+  }, "Nao foi possivel atualizar o status da tarefa");
 }
 
-export async function deleteTaskAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateTaskBackend(`/api/tasks/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/tasks");
+export async function deleteTaskAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateTaskBackend(`/api/tasks/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/tasks");
+  }, "Nao foi possivel excluir a tarefa");
 }
 
 function taskPayloadFromForm(formData: FormData): TaskPayload {
   return {
     projectId: requiredString(formData.get("projectId")),
     deliveryId: nullableString(formData.get("deliveryId")),
+    clientId: nullableString(formData.get("clientId")),
+    contractId: nullableString(formData.get("contractId")),
+    serviceId: nullableString(formData.get("serviceId")),
     responsibleUserId: nullableString(formData.get("responsibleUserId")),
     title: requiredString(formData.get("title")),
     description: stringFromForm(formData.get("description")),
+    checklist: stringFromForm(formData.get("checklist")),
+    comments: stringFromForm(formData.get("comments")),
     priority: requiredString(formData.get("priority")) as TaskPriority,
     dueDate: requiredString(formData.get("dueDate")),
     status: requiredString(formData.get("status")) as TaskStatus,

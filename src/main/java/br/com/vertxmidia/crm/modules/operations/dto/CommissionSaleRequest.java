@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record CommissionSaleRequest(
@@ -16,9 +17,14 @@ public record CommissionSaleRequest(
         String status,
         UUID contractId,
         UUID financeEntryId,
+        UUID clientId,
         @Size(max = 180) String client,
+        @Pattern(regexp = "^(PERCENTUAL|FIXA)$", message = "Tipo de calculo de comissao invalido")
+        String calculationType,
         @DecimalMin("0.00") BigDecimal value,
         @DecimalMin("0.00") BigDecimal percent,
+        @DecimalMin("0.00") BigDecimal fixedValue,
+        LocalDate referenceMonth,
         @Min(0) Integer goal,
         Boolean active
 ) {

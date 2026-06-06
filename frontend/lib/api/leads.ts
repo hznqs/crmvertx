@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toLeadSearchParams } from "@/lib/leads/query";
 import type { LeadPage, LeadQuery } from "@/lib/types/leads";
 
@@ -26,7 +27,8 @@ export async function fetchLeads(query: LeadQuery): Promise<LeadPage> {
   } catch {
     return {
       ...emptyLeadPage,
-      sourceUnavailable: true
+      sourceUnavailable: true,
+      loadError: "Backend indisponivel em http://localhost:8080."
     };
   }
 
@@ -35,8 +37,25 @@ export async function fetchLeads(query: LeadQuery): Promise<LeadPage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar leads");
+    return { ...emptyLeadPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar leads") };
   }
 
-  return response.json();
+  return sanitizeLeadPage(await response.json(), query);
+}
+
+function sanitizeLeadPage(page: LeadPage, query: LeadQuery): LeadPage {
+  if (query.active === "false") {
+    return page;
+  }
+
+  const content = page.content.filter((lead) => lead.active !== false && lead.status !== "CONVERTED" && !lead.convertedClientId);
+  const removed = page.content.length - content.length;
+  const totalElements = Math.max(0, page.totalElements - removed);
+  const size = page.size > 0 ? page.size : emptyLeadPage.size;
+  return {
+    ...page,
+    content,
+    totalElements,
+    totalPages: Math.max(1, Math.ceil(totalElements / size))
+  };
 }

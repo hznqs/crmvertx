@@ -5,6 +5,7 @@ import { ContractDialog } from "@/components/contracts/contract-dialog";
 import { ContractFormFields } from "@/components/contracts/contract-form-fields";
 import { ContractSubmitButton } from "@/components/contracts/contract-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { createContractAction } from "@/lib/contracts/actions";
 import type { ContractSelectOption } from "@/lib/types/contracts";
 
@@ -28,10 +29,10 @@ export function ContractCreateButton({
       </button>
       {isOpen ? (
         <ContractDialog title="Cadastrar contrato" eyebrow="Receita recorrente" onClose={() => setIsOpen(false)}>
-          <form action={createContractAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createContractAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <ContractFormFields clientOptions={clientOptions} serviceOptions={serviceOptions} projectOptions={projectOptions} />
             <ContractDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar contrato" />
-          </form>
+          </SafeActionForm>
         </ContractDialog>
       ) : null}
     </>

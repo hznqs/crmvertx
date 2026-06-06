@@ -5,6 +5,7 @@ import { createClientAction } from "@/lib/clients/actions";
 import { ClientFormFields } from "@/components/clients/client-form-fields";
 import { ClientSubmitButton } from "@/components/clients/client-submit-button";
 import { ModalDialog, ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 export function ClientCreateButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,10 +22,10 @@ export function ClientCreateButton() {
 
       {isOpen ? (
         <ClientDialog title="Cadastrar cliente" eyebrow="Novo relacionamento" onClose={() => setIsOpen(false)}>
-          <form action={createClientAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createClientAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <ClientFormFields />
             <DialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar cliente" />
-          </form>
+          </SafeActionForm>
         </ClientDialog>
       ) : null}
     </>

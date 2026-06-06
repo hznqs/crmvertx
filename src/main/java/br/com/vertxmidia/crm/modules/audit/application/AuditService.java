@@ -13,6 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 public class AuditService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuditService.class);
 
     private final AuditLogRepository repository;
     private final RealtimeEventHub eventHub;
@@ -32,24 +36,34 @@ public class AuditService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(String action, String entity, UUID entityId) {
-        AuditLog log = new AuditLog();
-        log.setUserId(currentUserId());
-        log.setAction(action);
-        log.setEntity(entity);
-        log.setEntityId(entityId);
-        log.setIpAddress(currentIpAddress());
-        publish(repository.save(log));
+        try {
+            AuditLog log = new AuditLog();
+            log.setUserId(currentUserId());
+            log.setAction(action);
+            log.setEntity(entity);
+            log.setEntityId(entityId);
+            log.setIpAddress(currentIpAddress());
+            publish(repository.save(log));
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Falha ao registrar auditoria {} para {} {}. Operacao principal preservada. Motivo: {}",
+                    action, entity, entityId, exception.getMessage());
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logAuthentication(String action, UUID userId, String email) {
-        AuditLog log = new AuditLog();
-        log.setUserId(userId);
-        log.setAction(action);
-        log.setEntity("Authentication");
-        log.setMetadata("email=" + sanitizeMetadata(email));
-        log.setIpAddress(currentIpAddress());
-        publish(repository.save(log));
+        try {
+            AuditLog log = new AuditLog();
+            log.setUserId(userId);
+            log.setAction(action);
+            log.setEntity("Authentication");
+            log.setMetadata("email=" + sanitizeMetadata(email));
+            log.setIpAddress(currentIpAddress());
+            publish(repository.save(log));
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Falha ao registrar auditoria de autenticacao {}. Operacao principal preservada. Motivo: {}",
+                    action, exception.getMessage());
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -58,16 +72,21 @@ public class AuditService {
             return;
         }
 
-        AuditLog log = new AuditLog();
-        log.setUserId(currentUserId());
-        log.setAction("UPDATE");
-        log.setEntity(entity);
-        log.setEntityId(entityId);
-        log.setFieldName(fieldName);
-        log.setOldValue(normalize(oldValue));
-        log.setNewValue(normalize(newValue));
-        log.setIpAddress(currentIpAddress());
-        publish(repository.save(log));
+        try {
+            AuditLog log = new AuditLog();
+            log.setUserId(currentUserId());
+            log.setAction("UPDATE");
+            log.setEntity(entity);
+            log.setEntityId(entityId);
+            log.setFieldName(fieldName);
+            log.setOldValue(normalize(oldValue));
+            log.setNewValue(normalize(newValue));
+            log.setIpAddress(currentIpAddress());
+            publish(repository.save(log));
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Falha ao registrar auditoria de alteracao {}.{} para {}. Operacao principal preservada. Motivo: {}",
+                    entity, fieldName, entityId, exception.getMessage());
+        }
     }
 
     private String normalize(Object value) {

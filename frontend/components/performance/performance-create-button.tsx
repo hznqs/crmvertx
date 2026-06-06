@@ -7,6 +7,7 @@ import { PerformanceDialog } from "@/components/performance/performance-dialog";
 import { PerformanceFormFields } from "@/components/performance/performance-form-fields";
 import { PerformanceSubmitButton } from "@/components/performance/performance-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 type PerformanceCreateButtonProps = {
   clientOptions: PerformanceClientOption[];
@@ -22,10 +23,10 @@ export function PerformanceCreateButton({ clientOptions }: PerformanceCreateButt
       </button>
       {isOpen ? (
         <PerformanceDialog title="Cadastrar performance" eyebrow="Marketing" onClose={() => setIsOpen(false)}>
-          <form action={createPerformanceAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createPerformanceAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <PerformanceFormFields clientOptions={clientOptions} />
             <PerformanceDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar performance" />
-          </form>
+          </SafeActionForm>
         </PerformanceDialog>
       ) : null}
     </>

@@ -20,6 +20,8 @@ public record FinanceEntryResponse(
         boolean recurring,
         boolean autoBilling,
         String costCenter,
+        String paymentMethod,
+        String notes,
         boolean active,
         Instant createdAt,
         Instant updatedAt
@@ -39,6 +41,8 @@ public record FinanceEntryResponse(
                 entry.isRecurring(),
                 entry.isAutoBilling(),
                 entry.getCostCenter(),
+                entry.getPaymentMethod(),
+                entry.getNotes(),
                 entry.isActive(),
                 entry.getCreatedAt(),
                 entry.getUpdatedAt()

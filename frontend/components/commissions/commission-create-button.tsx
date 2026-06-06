@@ -7,6 +7,7 @@ import { CommissionDialog } from "@/components/commissions/commission-dialog";
 import { CommissionFormFields } from "@/components/commissions/commission-form-fields";
 import { CommissionSubmitButton } from "@/components/commissions/commission-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 type CommissionCreateButtonProps = {
   memberOptions: CommissionSelectOption[];
@@ -23,10 +24,10 @@ export function CommissionCreateButton({ memberOptions, contractOptions }: Commi
       </button>
       {isOpen ? (
         <CommissionDialog title="Cadastrar comissao" eyebrow="Vendas e incentivo" onClose={() => setIsOpen(false)}>
-          <form action={createCommissionAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createCommissionAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <CommissionFormFields memberOptions={memberOptions} contractOptions={contractOptions} />
             <CommissionDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar comissao" />
-          </form>
+          </SafeActionForm>
         </CommissionDialog>
       ) : null}
     </>

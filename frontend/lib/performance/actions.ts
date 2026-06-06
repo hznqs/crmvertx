@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
 
 type PerformancePayload = {
   clientId: string | null;
@@ -13,21 +15,27 @@ type PerformancePayload = {
   active: boolean;
 };
 
-export async function createPerformanceAction(formData: FormData) {
-  await mutatePerformanceBackend("/api/performance-records", "POST", performancePayloadFromForm(formData));
-  revalidatePath("/performance");
+export async function createPerformanceAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutatePerformanceBackend("/api/performance-records", "POST", performancePayloadFromForm(formData));
+    revalidatePath("/performance");
+  }, "Nao foi possivel salvar performance");
 }
 
-export async function updatePerformanceAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutatePerformanceBackend(`/api/performance-records/${encodeURIComponent(id)}`, "PUT", performancePayloadFromForm(formData));
-  revalidatePath("/performance");
+export async function updatePerformanceAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutatePerformanceBackend(`/api/performance-records/${encodeURIComponent(id)}`, "PUT", performancePayloadFromForm(formData));
+    revalidatePath("/performance");
+  }, "Nao foi possivel salvar performance");
 }
 
-export async function deletePerformanceAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutatePerformanceBackend(`/api/performance-records/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/performance");
+export async function deletePerformanceAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutatePerformanceBackend(`/api/performance-records/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/performance");
+  }, "Nao foi possivel excluir performance");
 }
 
 function performancePayloadFromForm(formData: FormData): PerformancePayload {
@@ -82,5 +90,5 @@ function stringFromForm(value: FormDataEntryValue | null) {
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }

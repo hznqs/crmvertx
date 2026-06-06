@@ -31,39 +31,10 @@ export const moduleDefinitions: ModuleDefinition[] = [
     ]
   },
   {
-    slug: "operational-dashboard",
-    title: "Dashboard Operacional",
-    eyebrow: "Operacao",
-    description: "Projetos em risco, tarefas atrasadas, entregas e capacidade da equipe.",
-    endpoint: "/api/dashboard/metrics",
-    searchPlaceholder: "Visao operacional",
-    columns: [
-      { key: "projectsAtRisk", label: "Projetos em risco" },
-      { key: "lateTasks", label: "Tarefas atrasadas" },
-      { key: "lateDeliveries", label: "Entregas atrasadas" },
-      { key: "operationalRiskRate", label: "Risco operacional" }
-    ]
-  },
-  {
-    slug: "executive-dashboard",
-    title: "Dashboard Executivo",
-    eyebrow: "Estrategia",
-    description: "Lucro estimado, margem, churn, MRR, ticket medio e clientes de maior valor.",
-    endpoint: "/api/dashboard/metrics",
-    searchPlaceholder: "Visao executiva",
-    columns: [
-      { key: "mrr", label: "MRR", format: "currency" },
-      { key: "netProfit", label: "Lucro liquido", format: "currency" },
-      { key: "averageTicket", label: "Ticket medio", format: "currency" },
-      { key: "profitMargin", label: "Margem" },
-      { key: "contractsExpiring", label: "Vencimentos" }
-    ]
-  },
-  {
     slug: "clients",
     title: "Clientes",
     eyebrow: "Relacionamento",
-    description: "Base de clientes, status, prioridade, contrato, tags e perfil operacional.",
+    description: "Base de clientes, status, prioridade, origem, tags e perfil operacional.",
     endpoint: "/api/clients",
     searchPlaceholder: "Buscar por empresa, contato, email ou documento",
     columns: [
@@ -71,7 +42,7 @@ export const moduleDefinitions: ModuleDefinition[] = [
       { key: "contactName", label: "Responsavel" },
       { key: "email", label: "Email" },
       { key: "status", label: "Status", format: "status" },
-      { key: "contractValue", label: "Contrato", format: "currency" }
+      { key: "origin", label: "Origem" }
     ]
   },
   {
@@ -222,21 +193,6 @@ export const moduleDefinitions: ModuleDefinition[] = [
       { key: "target", label: "Alvo", format: "currency" },
       { key: "actual", label: "Atual", format: "currency" },
       { key: "date", label: "Data", format: "date" }
-    ]
-  },
-  {
-    slug: "performance",
-    title: "Performance Cliente",
-    eyebrow: "Marketing",
-    description: "ROI, CPL, conversao, leads gerados e investimento por cliente.",
-    endpoint: "/api/performance-records",
-    searchPlaceholder: "Buscar performance",
-    columns: [
-      { key: "clientName", label: "Cliente" },
-      { key: "metricDate", label: "Data", format: "date" },
-      { key: "leads", label: "Leads" },
-      { key: "cpl", label: "CPL", format: "currency" },
-      { key: "roi", label: "ROI" }
     ]
   },
   {

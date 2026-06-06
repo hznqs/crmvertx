@@ -5,6 +5,7 @@ import { createLeadAction } from "@/lib/leads/actions";
 import { LeadFormFields } from "@/components/leads/lead-form-fields";
 import { LeadSubmitButton } from "@/components/leads/lead-submit-button";
 import { ModalDialog, ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 export function LeadCreateButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,12 +27,12 @@ export function LeadCreateButton() {
           onClose={() => setIsOpen(false)}
           maxWidthClassName="max-w-3xl"
         >
-          <form action={createLeadAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createLeadAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <LeadFormFields mode="create" />
             <ModalFooter onClose={() => setIsOpen(false)}>
                 <LeadSubmitButton idleLabel="Salvar lead" pendingLabel="Salvando..." />
             </ModalFooter>
-          </form>
+          </SafeActionForm>
         </ModalDialog>
       ) : null}
     </>

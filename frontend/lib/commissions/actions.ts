@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { CommissionStatus, CommissionType } from "@/lib/types/commissions";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
+import type { CommissionCalculationType, CommissionStatus, CommissionType } from "@/lib/types/commissions";
 
 type CommissionPayload = {
   memberId: string;
@@ -10,28 +12,38 @@ type CommissionPayload = {
   status: CommissionStatus;
   contractId: string | null;
   financeEntryId: string | null;
+  clientId: string | null;
   client: string;
+  calculationType: CommissionCalculationType;
   value: number;
   percent: number;
+  fixedValue: number;
+  referenceMonth: string | null;
   goal: number;
   active: boolean;
 };
 
-export async function createCommissionAction(formData: FormData) {
-  await mutateCommissionBackend("/api/commission-sales", "POST", commissionPayloadFromForm(formData));
-  revalidatePath("/commissions");
+export async function createCommissionAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateCommissionBackend("/api/commission-sales", "POST", commissionPayloadFromForm(formData));
+    revalidatePath("/commissions");
+  }, "Nao foi possivel salvar a comissao");
 }
 
-export async function updateCommissionAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateCommissionBackend(`/api/commission-sales/${encodeURIComponent(id)}`, "PUT", commissionPayloadFromForm(formData));
-  revalidatePath("/commissions");
+export async function updateCommissionAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateCommissionBackend(`/api/commission-sales/${encodeURIComponent(id)}`, "PUT", commissionPayloadFromForm(formData));
+    revalidatePath("/commissions");
+  }, "Nao foi possivel salvar a comissao");
 }
 
-export async function deleteCommissionAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateCommissionBackend(`/api/commission-sales/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/commissions");
+export async function deleteCommissionAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateCommissionBackend(`/api/commission-sales/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/commissions");
+  }, "Nao foi possivel excluir a comissao");
 }
 
 function commissionPayloadFromForm(formData: FormData): CommissionPayload {
@@ -41,9 +53,13 @@ function commissionPayloadFromForm(formData: FormData): CommissionPayload {
     status: requiredString(formData.get("status")) as CommissionStatus,
     contractId: nullableString(formData.get("contractId")),
     financeEntryId: nullableString(formData.get("financeEntryId")),
+    clientId: nullableString(formData.get("clientId")),
     client: stringFromForm(formData.get("client")),
+    calculationType: requiredString(formData.get("calculationType")) as CommissionCalculationType,
     value: numberFromForm(formData.get("value")),
     percent: numberFromForm(formData.get("percent")),
+    fixedValue: numberFromForm(formData.get("fixedValue")),
+    referenceMonth: nullableString(formData.get("referenceMonth")),
     goal: numberFromForm(formData.get("goal")),
     active: formData.get("active") !== "false"
   };
@@ -89,5 +105,5 @@ function stringFromForm(value: FormDataEntryValue | null) {
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }

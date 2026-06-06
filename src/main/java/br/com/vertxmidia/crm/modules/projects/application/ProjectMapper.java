@@ -25,6 +25,8 @@ public class ProjectMapper {
         project.setStatus(request.status());
         project.setResponsibleUserId(request.responsibleUserId());
         project.setTeamMemberIds(normalizeNullable(request.teamMemberIds()));
+        project.setStartDate(request.startDate());
+        project.setPriority(defaultPriority(request.priority()));
         project.setProgress(request.progress());
         project.setSlaDueDate(request.slaDueDate());
         project.setBudget(defaultNumber(request.budget()));
@@ -48,6 +50,8 @@ public class ProjectMapper {
                 project.getStatus(),
                 project.getResponsibleUserId(),
                 project.getTeamMemberIds(),
+                project.getStartDate(),
+                project.getPriority(),
                 project.getProgress(),
                 project.getSlaDueDate(),
                 project.getBudget(),
@@ -72,5 +76,10 @@ public class ProjectMapper {
             return null;
         }
         return value.trim();
+    }
+
+    private String defaultPriority(String value) {
+        String normalized = normalizeNullable(value);
+        return normalized == null ? "MEDIA" : normalized.toUpperCase();
     }
 }

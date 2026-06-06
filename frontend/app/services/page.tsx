@@ -19,6 +19,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
   const actionPermissions = moduleActionPermissions(user?.role ?? null, "SERVICES");
   const query = buildServiceQuery(resolvedSearchParams);
   const servicePage = await fetchServices(query);
+  const loadError = servicePage.loadError;
 
   return (
     <main className="space-y-6">
@@ -42,10 +43,9 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
 
       <ServiceMetrics services={servicePage.content} totalElements={servicePage.totalElements} />
 
-      {servicePage.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar o catalogo real de servicos.
+          {loadError}
         </div>
       ) : null}
 

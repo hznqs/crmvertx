@@ -16,9 +16,14 @@ export default async function PipelinePage({ searchParams }: PipelinePageProps) 
   const query = buildLeadQuery({
     ...resolvedSearchParams,
     size: resolvedSearchParams.size ?? "100",
-    status: resolvedSearchParams.status ?? "ACTIVE"
+    status: resolvedSearchParams.status ?? "ACTIVE",
+    active: "true"
   });
   const leadPage = await fetchLeads(query);
+  const loadError = leadPage.loadError;
+  const boardStateKey = leadPage.content
+    .map((lead) => `${lead.id}:${lead.commercialStage}:${lead.status}:${lead.active}:${lead.updatedAt}`)
+    .join("|");
 
   return (
     <main className="space-y-6">
@@ -44,10 +49,9 @@ export default async function PipelinePage({ searchParams }: PipelinePageProps) 
 
       <PipelineMetrics leads={leadPage.content} totalElements={leadPage.totalElements} />
 
-      {leadPage.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar o pipeline real.
+          {loadError}
         </div>
       ) : null}
 
@@ -55,7 +59,7 @@ export default async function PipelinePage({ searchParams }: PipelinePageProps) 
 
       <section className="rounded-2xl bg-panel/95 p-4 shadow-panel md:p-5">
         <PipelineFilters query={query} />
-        <PipelineBoard leads={leadPage.content} />
+        <PipelineBoard key={boardStateKey} leads={leadPage.content} />
       </section>
     </main>
   );

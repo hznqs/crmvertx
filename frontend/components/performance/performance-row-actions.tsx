@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deletePerformanceAction, updatePerformanceAction } from "@/lib/performance/actions";
 import type { ModuleActionPermissions } from "@/lib/auth/permissions";
@@ -7,8 +8,9 @@ import type { ClientPerformanceRecord, PerformanceClientOption } from "@/lib/typ
 import { PerformanceDialogFooter } from "@/components/performance/performance-create-button";
 import { PerformanceDialog } from "@/components/performance/performance-dialog";
 import { PerformanceFormFields } from "@/components/performance/performance-form-fields";
-import { PerformanceSubmitButton } from "@/components/performance/performance-submit-button";
-import { ReadOnlyActionLabel, RowActionButton } from "@/components/ui/row-actions";
+import { ActionMenu, type ActionMenuAction } from "@/components/ui/action-menu";
+import { ReadOnlyActionLabel } from "@/components/ui/row-actions";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 
 type PerformanceRowActionsProps = {
   record: ClientPerformanceRecord;
@@ -25,27 +27,41 @@ export function PerformanceRowActions({ record, clientOptions, actionPermissions
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {actionPermissions.canWrite ? (
-        <RowActionButton onClick={() => setIsEditing(true)}>
-          Editar
-        </RowActionButton>
-      ) : null}
-      {actionPermissions.canManage ? (
-        <form action={deletePerformanceAction}>
-          <input type="hidden" name="id" value={record.id} />
-          <PerformanceSubmitButton idleLabel="Excluir" pendingLabel="Excluindo..." tone="danger" />
-        </form>
-      ) : null}
+      <ActionMenu actions={performanceActions()} />
 
       {isEditing ? (
         <PerformanceDialog title="Editar performance" eyebrow={record.date} onClose={() => setIsEditing(false)}>
-          <form action={updatePerformanceAction} className="mt-5 space-y-5">
+          <SafeActionForm action={updatePerformanceAction} onSuccess={() => setIsEditing(false)} className="mt-5 space-y-5">
             <input type="hidden" name="id" value={record.id} />
             <PerformanceFormFields record={record} clientOptions={clientOptions} />
             <PerformanceDialogFooter onClose={() => setIsEditing(false)} submitLabel="Salvar alteracoes" />
-          </form>
+          </SafeActionForm>
         </PerformanceDialog>
       ) : null}
     </div>
   );
+
+  function performanceActions(): ActionMenuAction[] {
+    return [
+      {
+        label: "Editar",
+        icon: Pencil,
+        onSelect: () => setIsEditing(true),
+        hidden: !actionPermissions.canWrite
+      },
+      {
+        label: "Arquivar performance",
+        icon: Trash2,
+        variant: "danger",
+        separatorBefore: true,
+        formAction: deletePerformanceAction,
+        fields: { id: record.id },
+        hidden: !actionPermissions.canManage,
+        requiresConfirmation: true,
+        confirmationTitle: "Arquivar performance",
+        confirmationDescription: "Tem certeza que deseja arquivar este registro de performance?",
+        confirmationActionLabel: "Arquivar"
+      }
+    ];
+  }
 }

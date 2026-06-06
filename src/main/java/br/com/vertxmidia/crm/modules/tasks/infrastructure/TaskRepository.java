@@ -21,4 +21,6 @@ public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificat
     long countByDueDateBeforeAndStatusNotInAndActiveTrue(LocalDate date, Collection<TaskStatus> statuses);
 
     long countByStatusNotInAndActiveTrue(Collection<TaskStatus> statuses);
+
+    long countByStatusAndUpdatedAtBetweenAndActiveTrue(TaskStatus status, java.time.Instant start, java.time.Instant end);
 }

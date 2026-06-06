@@ -19,7 +19,10 @@ public class BillingController {
 
     @GetMapping("/summary")
     @PreAuthorize("@crmPermission.canRead(authentication, 'BILLING')")
-    BillingSummaryResponse summary() {
-        return service.summary();
+    BillingSummaryResponse summary(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) java.time.LocalDate from,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) java.time.LocalDate to
+    ) {
+        return service.summary(from, to);
     }
 }

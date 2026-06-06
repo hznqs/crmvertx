@@ -35,6 +35,7 @@ export default async function CommissionsPage({ searchParams }: CommissionsPageP
     id: contract.id,
     label: contract.plan
   }));
+  const loadError = commissionPage.loadError ?? metrics.loadError ?? ranking.loadError ?? teamPage.loadError ?? contractPage.loadError;
 
   return (
     <main className="space-y-6">
@@ -59,10 +60,9 @@ export default async function CommissionsPage({ searchParams }: CommissionsPageP
       <CommissionMetricsPanel metrics={metrics} ranking={ranking} />
       <CommissionRankingPanel ranking={ranking} />
 
-      {commissionPage.sourceUnavailable || metrics.sourceUnavailable || ranking.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar comissoes e ranking reais.
+          {loadError}
         </div>
       ) : null}
 

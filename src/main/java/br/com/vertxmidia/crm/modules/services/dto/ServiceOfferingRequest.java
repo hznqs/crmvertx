@@ -17,6 +17,7 @@ public record ServiceOfferingRequest(
         @NotBlank @Size(max = 160) String name,
         @NotNull ServiceCategory category,
         @Size(max = 8000) String description,
+        @Size(max = 10000) String notes,
         @NotNull ServiceBillingType billingType,
         @NotNull @DecimalMin("0.00") @Digits(integer = 12, fraction = 2) BigDecimal basePrice,
         @NotNull @Min(0) @Max(3650) Integer slaDays,

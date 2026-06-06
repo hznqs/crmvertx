@@ -9,6 +9,8 @@ export type BackendPage<TRecord extends Record<string, unknown>> = {
   totalElements: number;
   sourceUnavailable?: boolean;
   unauthorized?: boolean;
+  loadError?: string;
+  errorStatus?: number;
 };
 
 const defaultPage = {
@@ -26,11 +28,19 @@ export async function fetchBackendPage<TRecord extends Record<string, unknown>>(
   const response = await fetchBackend(endpoint, params);
 
   if (response.status === "unavailable") {
-    return { ...defaultPage, sourceUnavailable: true };
+    return { ...defaultPage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === "unauthorized") {
     return { ...defaultPage, unauthorized: true };
+  }
+
+  if (response.status === "error") {
+    return {
+      ...defaultPage,
+      loadError: response.message,
+      errorStatus: response.statusCode
+    };
   }
 
   const body = response.body;
@@ -76,11 +86,22 @@ async function fetchBackend(endpoint: string, params: URLSearchParams) {
   }
 
   if (!response.ok) {
-    return { status: "unavailable" as const };
+    return {
+      status: "error" as const,
+      statusCode: response.status,
+      message: await backendErrorMessage(response, "Nao foi possivel carregar os dados.")
+    };
   }
 
   return {
     status: "ok" as const,
     body: await response.json()
   };
+}
+
+export async function backendErrorMessage(response: Response, fallback: string) {
+  const error = await response.json().catch(() => null) as { message?: unknown } | null;
+  return typeof error?.message === "string" && error.message.trim()
+    ? error.message
+    : fallback;
 }

@@ -29,20 +29,20 @@ export function CommandPalette({ role }: Readonly<{ role: UserRole | null }>) {
       open={open}
       onOpenChange={setOpen}
       label="Comando global"
-      className="fixed inset-0 z-[80] grid place-items-start bg-[#090909]/70 px-4 pt-[12vh] backdrop-blur-xl"
+      className="fixed inset-0 z-[80] grid place-items-start bg-[#090909]/72 px-2 pt-[10vh] backdrop-blur-xl sm:px-4 sm:pt-[12vh]"
     >
       <motion.div
         initial={{ opacity: 0, y: -12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-        className="crm-popover-surface mx-auto w-full max-w-2xl overflow-hidden"
+        className="crm-popover-surface mx-auto w-full max-w-[calc(100vw-1rem)] overflow-hidden sm:max-w-2xl"
       >
-        <div className="flex items-center gap-3 border-b border-line bg-white/[0.025] px-4">
+        <div className="flex min-w-0 items-center gap-3 border-b border-line bg-white/[0.025] px-3 sm:px-4">
           <BrandLogo variant="mark" size="sm" className="h-8 w-8" />
           <Search className="h-4 w-4 text-zinc-500" aria-hidden />
           <Command.Input
             placeholder="Buscar modulos, acoes e paginas..."
-            className="h-14 w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
+            className="h-14 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
           />
           <kbd className="rounded border border-brand-400/15 bg-brand-500/10 px-2 py-1 text-[10px] font-bold text-fuchsia-100">
             ESC
@@ -72,13 +72,13 @@ export function CommandPalette({ role }: Readonly<{ role: UserRole | null }>) {
                       value={`${item.label} ${item.href}`}
                       onSelect={() => navigate(item.href)}
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-crm px-3 py-3 text-sm font-semibold text-zinc-300 outline-none transition duration-premium ease-premium",
+                        "flex min-w-0 cursor-pointer items-center gap-3 rounded-crm px-3 py-3 text-sm font-semibold text-zinc-300 outline-none transition duration-premium ease-premium",
                         "data-[selected=true]:bg-brand-500/15 data-[selected=true]:text-white data-[selected=true]:shadow-[0_0_24px_rgba(234,89,220,.12)]"
                       )}
                     >
-                      <Icon className="h-4 w-4 text-brand-400" aria-hidden />
-                      <span>{item.label}</span>
-                      <span className="ml-auto text-xs font-medium text-zinc-600">{item.href}</span>
+                      <Icon className="h-4 w-4 shrink-0 text-brand-400" aria-hidden />
+                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span className="ml-auto hidden max-w-[42%] truncate text-xs font-medium text-zinc-600 sm:inline">{item.href}</span>
                     </Command.Item>
                   );
                 })}

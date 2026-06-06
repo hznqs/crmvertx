@@ -14,6 +14,7 @@ import { buildContractQuery } from "@/lib/contracts/query";
 import { buildProjectQuery } from "@/lib/projects/query";
 import { buildServiceQuery } from "@/lib/services/query";
 import type { ContractSearchParams, ContractSelectOption } from "@/lib/types/contracts";
+import type { ServiceOffering } from "@/lib/types/services";
 
 type ContractsPageProps = {
   searchParams: Promise<ContractSearchParams>;
@@ -32,8 +33,9 @@ export default async function ContractsPage({ searchParams }: ContractsPageProps
     fetchProjects(buildProjectQuery({ size: "100", active: "true" }))
   ]);
   const clientOptions = clientPage.content.map(toOption);
-  const serviceOptions = servicePage.content.map(toOption);
+  const serviceOptions = servicePage.content.map(toServiceOption);
   const projectOptions = projectPage.content.map(toOption);
+  const loadError = contractPage.loadError ?? summary.loadError ?? clientPage.loadError ?? servicePage.loadError ?? projectPage.loadError;
 
   return (
     <main className="space-y-6">
@@ -57,10 +59,9 @@ export default async function ContractsPage({ searchParams }: ContractsPageProps
 
       <ContractMetrics contracts={contractPage.content} summary={summary} />
 
-      {contractPage.sourceUnavailable || summary.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar contratos e resumo financeiro reais.
+          {loadError}
         </div>
       ) : null}
 
@@ -80,4 +81,14 @@ export default async function ContractsPage({ searchParams }: ContractsPageProps
 
 function toOption(entity: { id: string; name?: string; plan?: string }): ContractSelectOption {
   return { id: entity.id, label: entity.name ?? entity.plan ?? entity.id.slice(0, 8) };
+}
+
+function toServiceOption(service: ServiceOffering): ContractSelectOption {
+  return {
+    id: service.id,
+    label: service.name,
+    basePrice: Number(service.basePrice ?? 0),
+    billingType: service.billingType,
+    active: service.active
+  };
 }

@@ -1,8 +1,6 @@
 package br.com.vertxmidia.crm.modules.operations.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
-import br.com.vertxmidia.crm.modules.client.domain.ClientPhase;
-import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.domain.CommissionSale;
 import br.com.vertxmidia.crm.modules.operations.domain.Contract;
 import br.com.vertxmidia.crm.modules.operations.domain.FinanceEntry;
@@ -10,6 +8,7 @@ import br.com.vertxmidia.crm.modules.operations.dto.FinanceEntryRequest;
 import br.com.vertxmidia.crm.modules.operations.dto.FinanceEntryResponse;
 import br.com.vertxmidia.crm.modules.operations.dto.FinanceSummaryResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.FinanceEntryRepository;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -37,14 +36,18 @@ public class FinanceEntryService {
     private static final String STATUS_CANCELED = "cancelado";
     private static final String CONTRACT_REVENUE_COST_CENTER = "vendas";
     private static final String COMMISSION_EXPENSE_COST_CENTER = "vendas";
+    private static final LocalDate MIN_REPORT_DATE = LocalDate.of(1900, 1, 1);
+    private static final LocalDate MAX_REPORT_DATE = LocalDate.of(9999, 12, 31);
 
     private final FinanceEntryRepository repository;
-    private final ClientRepository clientRepository;
+    private final ContractRepository contractRepository;
     private final AuditService auditService;
 
-    public FinanceEntryService(FinanceEntryRepository repository, ClientRepository clientRepository, AuditService auditService) {
+    public FinanceEntryService(FinanceEntryRepository repository,
+                               ContractRepository contractRepository,
+                               AuditService auditService) {
         this.repository = repository;
-        this.clientRepository = clientRepository;
+        this.contractRepository = contractRepository;
         this.auditService = auditService;
     }
 
@@ -66,14 +69,16 @@ public class FinanceEntryService {
 
     @Transactional(readOnly = true)
     public FinanceSummaryResponse summary(LocalDate from, LocalDate to) {
-        BigDecimal activeClientRecurring = clientRepository.sumContractValueByPhase(ClientPhase.FECHADO);
-        BigDecimal recurringEntries = repository.sumRecurringByTypeAndPeriod("receita", from, to);
-        BigDecimal revenueEntries = repository.sumByTypeAndPeriod("receita", from, to);
-        BigDecimal expenses = repository.sumByTypeAndPeriod("despesa", from, to);
-        BigDecimal commissions = repository.sumByTypeAndPeriod("comissao", from, to);
-        BigDecimal taxes = repository.sumByTypeAndPeriod("imposto", from, to);
-        BigDecimal overdue = repository.sumByStatusAndPeriod("vencido", from, to);
-        long autoBilling = repository.countAutoBillingByPeriod(from, to);
+        LocalDate periodStart = normalizePeriodStart(from);
+        LocalDate periodEnd = normalizePeriodEnd(to);
+        BigDecimal activeClientRecurring = contractRepository.sumMonthlyValueByStatusAndActiveTrue("ativo");
+        BigDecimal recurringEntries = repository.sumRecurringByTypeAndPeriod("receita", periodStart, periodEnd);
+        BigDecimal revenueEntries = repository.sumByTypeAndPeriod("receita", periodStart, periodEnd);
+        BigDecimal expenses = repository.sumByTypeAndPeriod("despesa", periodStart, periodEnd);
+        BigDecimal commissions = repository.sumByTypeAndPeriod("comissao", periodStart, periodEnd);
+        BigDecimal taxes = repository.sumByTypeAndPeriod("imposto", periodStart, periodEnd);
+        BigDecimal overdue = repository.sumByStatusAndPeriod("vencido", periodStart, periodEnd);
+        long autoBilling = repository.countAutoBillingByPeriod(periodStart, periodEnd);
 
         BigDecimal recurringRevenue = activeClientRecurring.add(recurringEntries);
         BigDecimal grossRevenue = activeClientRecurring.add(revenueEntries);
@@ -249,6 +254,8 @@ public class FinanceEntryService {
                 contract.isAutoRenew() || contract.getDurationMonths() > 1,
                 true,
                 CONTRACT_REVENUE_COST_CENTER,
+                null,
+                null,
                 true
         );
     }
@@ -287,6 +294,8 @@ public class FinanceEntryService {
                 false,
                 true,
                 COMMISSION_EXPENSE_COST_CENTER,
+                null,
+                null,
                 true
         );
     }
@@ -299,6 +308,9 @@ public class FinanceEntryService {
     }
 
     private BigDecimal commissionValue(CommissionSale commission) {
+        if ("FIXA".equalsIgnoreCase(commission.getCalculationType())) {
+            return commission.getFixedValue() == null ? BigDecimal.ZERO : commission.getFixedValue();
+        }
         BigDecimal value = commission.getValue() == null ? BigDecimal.ZERO : commission.getValue();
         BigDecimal percent = commission.getPercent() == null ? BigDecimal.ZERO : commission.getPercent();
         return value.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
@@ -343,6 +355,8 @@ public class FinanceEntryService {
         entry.setRecurring(request.recurring());
         entry.setAutoBilling(request.autoBilling());
         entry.setCostCenter(normalizeCostCenter(request.costCenter()));
+        entry.setPaymentMethod(blankToNull(request.paymentMethod()));
+        entry.setNotes(blankToNull(request.notes()));
         if (request.active() != null) {
             entry.setActive(request.active());
         }
@@ -361,11 +375,17 @@ public class FinanceEntryService {
         auditService.logChange("Lancamento financeiro", entry.getId(), "recurring", entry.isRecurring(), request.recurring());
         auditService.logChange("Lancamento financeiro", entry.getId(), "autoBilling", entry.isAutoBilling(), request.autoBilling());
         auditService.logChange("Lancamento financeiro", entry.getId(), "costCenter", entry.getCostCenter(), normalizeCostCenter(request.costCenter()));
+        auditService.logChange("Lancamento financeiro", entry.getId(), "paymentMethod", entry.getPaymentMethod(), blankToNull(request.paymentMethod()));
+        auditService.logChange("Lancamento financeiro", entry.getId(), "notes", entry.getNotes(), blankToNull(request.notes()));
         auditService.logChange("Lancamento financeiro", entry.getId(), "active", entry.isActive(), request.active() == null || request.active());
     }
 
     private String normalizeCostCenter(String value) {
         return value == null || value.isBlank() ? "operacional" : value.trim();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private UUID currentUserId() {
@@ -379,5 +399,13 @@ public class FinanceEntryService {
         } catch (IllegalArgumentException ex) {
             return null;
         }
+    }
+
+    private LocalDate normalizePeriodStart(LocalDate from) {
+        return from == null ? MIN_REPORT_DATE : from;
+    }
+
+    private LocalDate normalizePeriodEnd(LocalDate to) {
+        return to == null ? MAX_REPORT_DATE : to;
     }
 }

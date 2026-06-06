@@ -24,7 +24,11 @@ export async function fetchGoals(query: GoalQuery): Promise<GoalPage> {
       cache: "no-store"
     });
   } catch {
-    return { ...emptyGoalPage, sourceUnavailable: true };
+    return {
+      ...emptyGoalPage,
+      sourceUnavailable: true,
+      loadError: "Backend indisponivel em http://localhost:8080."
+    };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -32,7 +36,11 @@ export async function fetchGoals(query: GoalQuery): Promise<GoalPage> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar metas");
+    const error = await response.json().catch(() => null);
+    const message = typeof error?.message === "string"
+      ? error.message
+      : "Nao foi possivel carregar metas agora.";
+    return { ...emptyGoalPage, loadError: message };
   }
 
   return response.json();

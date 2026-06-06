@@ -2,20 +2,23 @@ export type ClientStatus = "ATIVO" | "EM_RISCO" | "INATIVO" | "ENCERRADO";
 
 export type ClientPriority = "BAIXA" | "MEDIA" | "ALTA" | "ESTRATEGICA";
 
-export type DocumentType = "CPF" | "CNPJ" | "OUTRO";
+export type DocumentType = "CPF" | "CNPJ" | "NAO_INFORMADO";
+
+export type ClientType = "FISICA" | "JURIDICA";
 
 export type Client = {
   id: string;
   name: string;
   phase: string;
-  value: number;
-  months: number;
   contact: string;
   email: string | null;
   phone: string | null;
   document: string | null;
+  clientType: ClientType;
   documentType: DocumentType | null;
   segment: string | null;
+  origin: string | null;
+  responsibleName: string | null;
   status: ClientStatus | null;
   priority: ClientPriority | null;
   tags: string | null;
@@ -27,6 +30,9 @@ export type Client = {
   addressState: string | null;
   addressZipCode: string | null;
   active: boolean;
+  hasActiveContracts: boolean;
+  hasContractHistory: boolean;
+  currentMrr: number | string;
   convertedFromLeadId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
@@ -42,6 +48,7 @@ export type ClientPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type ClientQuery = {

@@ -1,4 +1,5 @@
 import { commissionStatusLabels, commissionTypeLabels } from "@/lib/commissions/labels";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormattedInput } from "@/components/ui/formatted-input";
 import { PremiumSelect } from "@/components/ui/premium-select";
 import type { CommissionSale, CommissionSelectOption } from "@/lib/types/commissions";
@@ -27,27 +28,46 @@ export function CommissionFormFields({ commission, memberOptions, contractOption
         </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Field label="Cliente">
           <input name="client" defaultValue={commission?.client ?? ""} className={inputClassName} />
         </Field>
         <Field label="Contrato">
           <PremiumSelect name="contractId" defaultValue={commission?.contractId ?? ""} placeholder="Nao vinculado" options={selectOptions(contractOptions, "Nao vinculado")} searchable />
         </Field>
-        <Field label="Lancamento financeiro">
-          <input name="financeEntryId" defaultValue={commission?.financeEntryId ?? ""} placeholder="UUID opcional" className={inputClassName} />
-        </Field>
+        <input type="hidden" name="clientId" value={commission?.clientId ?? ""} />
+        <input type="hidden" name="financeEntryId" value={commission?.financeEntryId ?? ""} />
         <Field label="Ativa">
           <PremiumSelect name="active" defaultValue={commission?.active === false ? "false" : "true"} options={booleanOptions("Ativa", "Inativa")} />
         </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Field label="Calculo">
+          <PremiumSelect
+            name="calculationType"
+            required
+            defaultValue={commission?.calculationType ?? "PERCENTUAL"}
+            options={[
+              { value: "PERCENTUAL", label: "Percentual" },
+              { value: "FIXA", label: "Valor fixo" }
+            ]}
+          />
+        </Field>
         <Field label="Valor da venda">
           <FormattedInput name="value" mask="currency" defaultValue={commission?.value ?? 0} />
         </Field>
         <Field label="Percentual">
           <FormattedInput name="percent" mask="percentage" defaultValue={commission?.percent ?? 0} />
+        </Field>
+        <Field label="Valor fixo">
+          <FormattedInput name="fixedValue" mask="currency" defaultValue={commission?.fixedValue ?? 0} />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Mes de referencia">
+          <DatePicker name="referenceMonth" defaultValue={commission?.referenceMonth ?? ""} />
         </Field>
         <Field label="Meta">
           <FormattedInput name="goal" mask="integer" defaultValue={commission?.goal ?? 0} />

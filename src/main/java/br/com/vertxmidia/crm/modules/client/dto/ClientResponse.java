@@ -18,8 +18,11 @@ public record ClientResponse(
         String email,
         String phone,
         String document,
+        String clientType,
         DocumentType documentType,
         String segment,
+        String origin,
+        String responsibleName,
         ClientStatus status,
         ClientPriority priority,
         String tags,
@@ -35,22 +38,32 @@ public record ClientResponse(
         UUID createdBy,
         UUID updatedBy,
         String notes,
+        boolean hasActiveContracts,
+        boolean hasContractHistory,
+        BigDecimal currentMrr,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static ClientResponse from(Client client) {
+        return from(client, false, false, BigDecimal.ZERO);
+    }
+
+    public static ClientResponse from(Client client, boolean hasActiveContracts, boolean hasContractHistory, BigDecimal currentMrr) {
         return new ClientResponse(
                 client.getId(),
                 client.getName(),
                 client.getPhase().value(),
-                client.getContractValue(),
-                client.getContractMonths(),
+                BigDecimal.ZERO,
+                1,
                 client.getContactName(),
                 client.getEmail(),
                 client.getPhone(),
                 client.getDocument(),
+                client.getClientType(),
                 client.getDocumentType(),
                 client.getSegment(),
+                client.getOrigin(),
+                client.getResponsibleName(),
                 client.getStatus(),
                 client.getPriority(),
                 client.getTags(),
@@ -66,6 +79,9 @@ public record ClientResponse(
                 client.getCreatedBy(),
                 client.getUpdatedBy(),
                 client.getNotes(),
+                hasActiveContracts,
+                hasContractHistory,
+                currentMrr,
                 client.getCreatedAt(),
                 client.getUpdatedAt()
         );

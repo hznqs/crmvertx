@@ -5,7 +5,11 @@ import java.util.List;
 
 public record BillingSummaryResponse(
         BigDecimal totalRevenue,
+        BigDecimal mrr,
         BigDecimal averageTicket,
+        BigDecimal pendingRevenue,
+        BigDecimal receivedRevenue,
+        BigDecimal overdueRevenue,
         long activeContracts,
         List<BillingClientResponse> clients
 ) {

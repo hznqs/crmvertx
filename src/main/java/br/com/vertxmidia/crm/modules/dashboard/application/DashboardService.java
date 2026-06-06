@@ -5,6 +5,7 @@ import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.dashboard.dto.DashboardMetricsResponse;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.ClientPerformanceRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
+import br.com.vertxmidia.crm.modules.operations.application.ContractService;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.CrmEventRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.DeliveryRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.FinanceEntryRepository;
@@ -17,9 +18,6 @@ import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +56,6 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "dashboardMetrics", key = "#from + ':' + #to")
     public DashboardMetricsResponse metrics(LocalDate from, LocalDate to) {
         LocalDate today = LocalDate.now();
         LocalDate periodStart = from == null ? today.withDayOfMonth(1) : from;
@@ -73,7 +70,7 @@ public class DashboardService {
         // Receitas por período
         BigDecimal monthlyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", periodStart, periodEnd);
         BigDecimal previousMonthlyRevenue = financeEntries.sumByTypeAndStatusAndDueBetween("receita", "pago", previousPeriodStart, previousPeriodEnd);
-        BigDecimal mrr = financeEntries.sumRecurringByTypeAndStatus("receita", "pago");
+        BigDecimal mrr = zeroIfNull(contracts.sumMonthlyValueByStatusAndActiveTrue("ativo"));
         BigDecimal periodExpenses = financeEntries.sumByTypeAndStatusAndDueBetween("despesa", "pago", periodStart, periodEnd);
         BigDecimal periodCommissions = financeEntries.sumByTypeAndStatusAndDueBetween("comissao", "pago", periodStart, periodEnd);
         BigDecimal periodTaxes = financeEntries.sumByTypeAndStatusAndDueBetween("imposto", "pago", periodStart, periodEnd);
@@ -91,7 +88,7 @@ public class DashboardService {
         BigDecimal investment = performanceRecords.sumInvestmentBetween(periodStart, periodEnd);
 
         long pendingFollowups = events.countPendingFollowups(today);
-        long totalClients = clients.count();
+        long totalClients = clients.countByActiveTrue();
         long projectsInExecution = projects.countByStatusAndActiveTrue(ProjectStatus.EM_EXECUCAO);
         long projectsAtRisk = projects.countBySlaDueDateLessThanEqualAndStatusNotInAndActiveTrue(
                 today.plusDays(3),
@@ -112,17 +109,31 @@ public class DashboardService {
                 BigDecimal.valueOf(Math.max(1, projectsInExecution + openTasks + pendingDeliveries + productionDeliveries + reviewDeliveries))
         );
 
+        long activeContracts = contracts.countByStatusAndActiveTrue("ativo");
+        BigDecimal averageTicket = activeContracts > 0
+                ? mrr.divide(BigDecimal.valueOf(activeContracts), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        long recurringCustomersAtStart = contracts.countRecurringCustomersActiveAt(ContractService.ACTIVE_CONTRACT_STATUSES, periodStart);
+        long recurringContractsAtStart = contracts.countRecurringContractsActiveAt(ContractService.ACTIVE_CONTRACT_STATUSES, periodStart);
+        long lostRecurringCustomers = contracts.countLostRecurringCustomersBetween(List.of("cancelado", "nao_renovado"), ContractService.ACTIVE_CONTRACT_STATUSES, periodStart, periodEnd);
+        long lostRecurringContracts = contracts.countLostRecurringContractsBetween(List.of("cancelado", "nao_renovado"), periodStart, periodEnd);
+        long nonRenewedContracts = contracts.countNonRenewedRecurringContractsBetween(periodStart, periodEnd);
+        BigDecimal mrrAtStart = zeroIfNull(contracts.sumRecurringMrrActiveAt(ContractService.ACTIVE_CONTRACT_STATUSES, periodStart));
+        BigDecimal mrrLost = zeroIfNull(contracts.sumMrrLostBetween(List.of("cancelado", "nao_renovado"), periodStart, periodEnd));
+
         return new DashboardMetricsResponse(
                 monthlyRevenue,
-                clients.countByPhase(ClientPhase.FECHADO),
-                clients.countByPhase(ClientPhase.PERDIDO),
+                clients.countByPhaseAndActiveTrue(ClientPhase.FECHADO),
+                clients.countByPhaseAndActiveTrue(ClientPhase.PERDIDO),
                 contracts.countByStatusAndEndDateBetweenAndActiveTrue("ativo", today, today.plusDays(30)),
-                contracts.countByStatusAndActiveTrue("ativo"),
-                events.countByStatusAndDateBetween("executada", periodStart, periodEnd),
+                activeContracts,
+                events.countByStatusAndDateBetweenAndActiveTrue("executada", periodStart, periodEnd),
                 lateTasks,
+                leads,
+                sales,
                 percentage(BigDecimal.valueOf(sales), BigDecimal.valueOf(leads)),
                 roi(mediaRevenue, investment),
-                clients.averageTicketByPhase(ClientPhase.FECHADO),
+                averageTicket,
                 mrr,
                 growth(monthlyRevenue, previousMonthlyRevenue),
                 dailyRevenue,
@@ -142,14 +153,14 @@ public class DashboardService {
                 productionDeliveries,
                 reviewDeliveries,
                 lateDeliveries,
-                operationalRiskRate
+                operationalRiskRate,
+                percentage(BigDecimal.valueOf(lostRecurringCustomers), BigDecimal.valueOf(recurringCustomersAtStart)),
+                percentage(BigDecimal.valueOf(lostRecurringContracts), BigDecimal.valueOf(recurringContractsAtStart)),
+                mrrLost,
+                percentage(mrrLost, mrrAtStart),
+                lostRecurringCustomers,
+                nonRenewedContracts
         );
-    }
-
-    @Scheduled(fixedDelayString = "${app.performance.dashboard-cache-ttl-ms:60000}")
-    @CacheEvict(value = "dashboardMetrics", allEntries = true)
-    public void evictDashboardMetricsCache() {
-        // Keeps dashboard snapshots fast without allowing stale metrics to live forever.
     }
 
     private BigDecimal percentage(BigDecimal value, BigDecimal total) {
@@ -157,6 +168,10 @@ public class DashboardService {
             return BigDecimal.ZERO;
         }
         return value.multiply(ONE_HUNDRED).divide(total, 2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private BigDecimal roi(BigDecimal revenue, BigDecimal investment) {

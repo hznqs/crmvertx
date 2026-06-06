@@ -6,6 +6,8 @@ export type DashboardMetrics = {
   activeContracts: number;
   completedMeetings: number;
   overdueTasks: number;
+  totalLeads: number;
+  totalSales: number;
   conversionRate: number | string;
   clientRoi: number | string;
   averageTicket: number | string;
@@ -29,7 +31,14 @@ export type DashboardMetrics = {
   reviewDeliveries: number;
   lateDeliveries: number;
   operationalRiskRate: number | string;
+  customerChurnRate: number | string;
+  contractChurnRate: number | string;
+  mrrLost: number | string;
+  mrrChurnRate: number | string;
+  lostRecurringCustomers: number;
+  nonRenewedContracts: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type RevenueChartPoint = {
@@ -46,6 +55,11 @@ export type MeetingsSalesChartPoint = {
 export type DashboardQuery = {
   from: string;
   to: string;
+};
+
+export type ChartPointString = {
+  label: string;
+  value: number;
 };
 
 export type DashboardSearchParams = {

@@ -5,6 +5,7 @@ import { TaskDialog } from "@/components/tasks/task-dialog";
 import { TaskFormFields } from "@/components/tasks/task-form-fields";
 import { TaskSubmitButton } from "@/components/tasks/task-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { createTaskAction } from "@/lib/tasks/actions";
 import type { TaskProjectOption } from "@/lib/types/tasks";
 
@@ -22,10 +23,10 @@ export function TaskCreateButton({ projectOptions }: TaskCreateButtonProps) {
       </button>
       {isOpen ? (
         <TaskDialog title="Cadastrar tarefa" eyebrow="Execucao" onClose={() => setIsOpen(false)}>
-          <form action={createTaskAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createTaskAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <TaskFormFields projectOptions={projectOptions} />
             <TaskDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar tarefa" />
-          </form>
+          </SafeActionForm>
         </TaskDialog>
       ) : null}
     </>

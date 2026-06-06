@@ -22,6 +22,7 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
     fetchTeamMembers(query),
     fetchTeamSummary({ role: query.role, search: query.search })
   ]);
+  const loadError = teamPage.loadError ?? summary.loadError;
 
   return (
     <main className="space-y-6">
@@ -45,10 +46,9 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
 
       <TeamMetrics summary={summary} />
 
-      {teamPage.sourceUnavailable || summary.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar a equipe real.
+          {loadError}
         </div>
       ) : null}
 

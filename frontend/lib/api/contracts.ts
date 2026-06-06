@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toContractSearchParams } from "@/lib/contracts/query";
 import type { ContractPage, ContractQuery, ContractSummary } from "@/lib/types/contracts";
 
@@ -31,7 +32,7 @@ export async function fetchContracts(query: ContractQuery): Promise<ContractPage
       cache: "no-store"
     });
   } catch {
-    return { ...emptyContractPage, sourceUnavailable: true };
+    return { ...emptyContractPage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -39,7 +40,7 @@ export async function fetchContracts(query: ContractQuery): Promise<ContractPage
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar contratos");
+    return { ...emptyContractPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar contratos") };
   }
 
   return response.json();
@@ -58,7 +59,7 @@ export async function fetchContractSummary(): Promise<ContractSummary> {
       cache: "no-store"
     });
   } catch {
-    return { ...emptySummary, sourceUnavailable: true };
+    return { ...emptySummary, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -66,7 +67,7 @@ export async function fetchContractSummary(): Promise<ContractSummary> {
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar resumo de contratos");
+    return { ...emptySummary, loadError: await backendErrorMessage(response, "Nao foi possivel carregar resumo de contratos") };
   }
 
   return response.json();

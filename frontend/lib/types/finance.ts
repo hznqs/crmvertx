@@ -1,6 +1,6 @@
 export type FinanceEntryType = "receita" | "despesa" | "comissao" | "imposto";
 
-export type FinanceEntryStatus = "pago" | "pendente" | "vencido";
+export type FinanceEntryStatus = "pago" | "pendente" | "vencido" | "cancelado";
 
 export type CostCenter =
   | "operacional"
@@ -24,6 +24,8 @@ export type FinanceEntry = {
   recurring: boolean;
   autoBilling: boolean;
   costCenter: CostCenter;
+  paymentMethod: string | null;
+  notes: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +38,7 @@ export type FinanceEntryPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type FinanceSummary = {
@@ -50,6 +53,7 @@ export type FinanceSummary = {
   grossRevenue: number | string;
   expenses: number | string;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type FinanceQuery = {

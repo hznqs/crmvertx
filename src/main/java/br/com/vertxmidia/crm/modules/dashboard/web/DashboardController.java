@@ -52,4 +52,40 @@ public class DashboardController {
     ) {
         return chartService.meetingsSalesByDay(from, to);
     }
+
+    @GetMapping("/pipeline-funnel")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
+    List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> pipelineFunnel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return chartService.pipelineFunnel(from, to);
+    }
+
+    @GetMapping("/leads-origin")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
+    List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> leadsOrigin(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return chartService.leadsOrigin(from, to);
+    }
+
+    @GetMapping("/top-services")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
+    List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> topServices(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return chartService.topServices(from, to);
+    }
+
+    @GetMapping("/projects-status")
+    @PreAuthorize("@crmPermission.canRead(authentication, 'DASHBOARD')")
+    List<br.com.vertxmidia.crm.modules.dashboard.dto.ChartPointString> projectsStatus(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return chartService.projectsStatus(from, to);
+    }
 }

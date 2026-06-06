@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -28,6 +29,11 @@ public class TeamMember extends TimestampedEntity implements OperationResource {
     @Size(max = 80)
     @Column(nullable = false, length = 80)
     private String role;
+    @Size(max = 120)
+    @Column(name = "function_name", length = 120)
+    private String functionName;
+    @Column(name = "joined_at")
+    private LocalDate joinedAt;
     @Min(0)
     @Column(nullable = false)
     private Integer tasks = 0;
@@ -67,6 +73,10 @@ public class TeamMember extends TimestampedEntity implements OperationResource {
     public void setName(String name) { this.name = name; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public String getFunctionName() { return functionName; }
+    public void setFunctionName(String functionName) { this.functionName = functionName; }
+    public LocalDate getJoinedAt() { return joinedAt; }
+    public void setJoinedAt(LocalDate joinedAt) { this.joinedAt = joinedAt; }
     public Integer getTasks() { return tasks; }
     public void setTasks(Integer tasks) { this.tasks = tasks; }
     public Integer getCompleted() { return completed; }

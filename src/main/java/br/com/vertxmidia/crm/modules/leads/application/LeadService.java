@@ -59,7 +59,7 @@ public class LeadService {
 
     @Transactional(readOnly = true)
     public Page<LeadResponse> search(LeadFilterRequest filter, Pageable pageable) {
-        return repository.findAll(LeadSpecifications.byFilters(filter), pageable)
+        return repository.findAll(LeadSpecifications.byFilters(withDefaultActiveFilter(filter)), pageable)
                 .map(mapper::toResponse);
     }
 
@@ -164,29 +164,50 @@ public class LeadService {
     @Transactional
     @CacheEvict(value = "dashboardMetrics", allEntries = true)
     public LeadConversionResponse convert(UUID id) {
-        Lead lead = getActiveLead(id);
-        assertLeadCanBeEdited(lead);
+        Lead lead = getLeadForConversion(id);
+        if (lead.getStatus() == LeadStatus.CONVERTED) {
+            ClientResponse client = existingConvertedClient(lead);
+            return new LeadConversionResponse(mapper.toResponse(lead), client);
+        }
 
         CommercialStage oldStage = lead.getCommercialStage();
         LeadStatus oldStatus = lead.getStatus();
         String oldLostReason = lead.getLostReason();
 
-        ClientResponse client = clientService.create(buildClientRequest(lead));
+        ClientResponse client = clientService
+                .findReusableClient(lead.getEmail(), lead.getPhone(), null)
+                .orElseGet(() -> clientService.create(buildClientRequest(lead)));
 
         auditService.logChange("Lead", lead.getId(), "status", lead.getStatus(), LeadStatus.CONVERTED);
         auditService.logChange("Lead", lead.getId(), "commercialStage", lead.getCommercialStage(), CommercialStage.FECHADO);
-        auditService.logChange("Lead", lead.getId(), "convertedClientId", null, client.id());
+        auditService.logChange("Lead", lead.getId(), "convertedClientId", lead.getConvertedClientId(), client.id());
+        auditService.logChange("Lead", lead.getId(), "active", lead.isActive(), false);
 
         lead.setStatus(LeadStatus.CONVERTED);
         lead.setCommercialStage(CommercialStage.FECHADO);
         lead.setLostReason(null);
         lead.setConvertedAt(Instant.now());
+        lead.setConvertedClientId(client.id());
+        lead.setActive(false);
         lead.setUpdatedBy(currentUserId());
 
         saveStageHistory(lead, oldStage, oldStatus, oldLostReason);
         Lead saved = repository.save(lead);
         auditService.log("CONVERT_TO_CLIENT", "Lead", saved.getId());
         return new LeadConversionResponse(mapper.toResponse(saved), client);
+    }
+
+    private ClientResponse existingConvertedClient(Lead lead) {
+        if (lead.getConvertedClientId() != null) {
+            try {
+                return clientService.findById(lead.getConvertedClientId());
+            } catch (EntityNotFoundException ignored) {
+                // Falls back to contact-based lookup for converted leads created before the link column.
+            }
+        }
+        return clientService
+                .findReusableClient(lead.getEmail(), lead.getPhone(), null)
+                .orElseThrow(() -> new IllegalArgumentException("Lead ja convertido, mas o cliente vinculado nao foi localizado"));
     }
 
     @Transactional
@@ -204,6 +225,12 @@ public class LeadService {
 
     private Lead getActiveLead(UUID id) {
         return repository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new EntityNotFoundException("Lead nao encontrado"));
+    }
+
+    private Lead getLeadForConversion(UUID id) {
+        return repository.findById(id)
+                .filter(lead -> lead.isActive() || lead.getStatus() == LeadStatus.CONVERTED)
                 .orElseThrow(() -> new EntityNotFoundException("Lead nao encontrado"));
     }
 
@@ -237,14 +264,17 @@ public class LeadService {
         return new ClientRequest(
                 clientNameFrom(lead),
                 "fechado",
-                lead.getPotentialValue() == null ? BigDecimal.ZERO : lead.getPotentialValue(),
+                BigDecimal.ZERO,
                 DEFAULT_CONTRACT_MONTHS,
                 lead.getName(),
                 lead.getEmail(),
                 lead.getPhone(),
                 null,
+                "JURIDICA",
                 null,
                 lead.getSegment(),
+                lead.getOrigin().name(),
+                lead.getResponsibleName(),
                 ClientStatus.ATIVO,
                 clientPriorityFrom(lead),
                 "lead-convertido",
@@ -293,10 +323,31 @@ public class LeadService {
         auditService.logChange("Lead", lead.getId(), "temperature", lead.getTemperature(), request.temperature());
         auditService.logChange("Lead", lead.getId(), "potentialValue", lead.getPotentialValue(), request.potentialValue());
         auditService.logChange("Lead", lead.getId(), "responsibleUserId", lead.getResponsibleUserId(), request.responsibleUserId());
+        auditService.logChange("Lead", lead.getId(), "responsibleName", lead.getResponsibleName(), normalizeNullable(request.responsibleName()));
+        auditService.logChange("Lead", lead.getId(), "serviceInterest", lead.getServiceInterest(), normalizeNullable(request.serviceInterest()));
+        auditService.logChange("Lead", lead.getId(), "nextAction", lead.getNextAction(), normalizeNullable(request.nextAction()));
+        auditService.logChange("Lead", lead.getId(), "nextActionDate", lead.getNextActionDate(), request.nextActionDate());
         auditService.logChange("Lead", lead.getId(), "notes", lead.getNotes(), normalizeNullable(request.notes()));
         auditService.logChange("Lead", lead.getId(), "status", lead.getStatus(), request.status());
         auditService.logChange("Lead", lead.getId(), "commercialStage", lead.getCommercialStage(), request.commercialStage());
         auditService.logChange("Lead", lead.getId(), "lostReason", lead.getLostReason(), normalizeNullable(request.lostReason()));
+    }
+
+    private LeadFilterRequest withDefaultActiveFilter(LeadFilterRequest filter) {
+        return new LeadFilterRequest(
+                filter.search(),
+                filter.origin(),
+                filter.segment(),
+                filter.temperature(),
+                filter.status(),
+                filter.commercialStage(),
+                filter.responsibleUserId(),
+                filter.minPotentialValue(),
+                filter.maxPotentialValue(),
+                filter.createdFrom(),
+                filter.createdTo(),
+                filter.active() == null ? true : filter.active()
+        );
     }
 
     private UUID currentUserId() {

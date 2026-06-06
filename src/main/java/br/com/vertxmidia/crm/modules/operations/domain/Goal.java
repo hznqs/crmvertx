@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -18,6 +19,9 @@ import org.hibernate.annotations.UuidGenerator;
 public class Goal extends TimestampedEntity implements OperationResource {
     @Id @GeneratedValue @UuidGenerator
     private UUID id;
+    @Size(max = 160)
+    @Column(length = 160)
+    private String name;
     @Column(nullable = false, length = 40)
     private String type = "FATURAMENTO";
     @DecimalMin("0.00")
@@ -33,6 +37,11 @@ public class Goal extends TimestampedEntity implements OperationResource {
     private LocalDate periodStart;
     @Column(name = "period_end")
     private LocalDate periodEnd;
+    @Size(max = 160)
+    @Column(length = 160)
+    private String responsible;
+    @Column(nullable = false, length = 30)
+    private String status = "EM_ANDAMENTO";
     @Column(nullable = false)
     private boolean active = true;
     @Column(name = "created_by")
@@ -41,6 +50,8 @@ public class Goal extends TimestampedEntity implements OperationResource {
     private UUID updatedBy;
 
     public UUID getId() { return id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public BigDecimal getTarget() { return target; }
@@ -53,6 +64,10 @@ public class Goal extends TimestampedEntity implements OperationResource {
     public void setPeriodStart(LocalDate periodStart) { this.periodStart = periodStart; }
     public LocalDate getPeriodEnd() { return periodEnd; }
     public void setPeriodEnd(LocalDate periodEnd) { this.periodEnd = periodEnd; }
+    public String getResponsible() { return responsible; }
+    public void setResponsible(String responsible) { this.responsible = responsible; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public UUID getCreatedBy() { return createdBy; }

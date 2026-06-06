@@ -19,6 +19,7 @@ export type ServiceOffering = {
   name: string;
   category: ServiceCategory;
   description: string | null;
+  notes: string | null;
   billingType: ServiceBillingType;
   basePrice: number;
   slaDays: number;
@@ -41,6 +42,7 @@ export type ServicePage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type ServiceQuery = {

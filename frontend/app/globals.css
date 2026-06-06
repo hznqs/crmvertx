@@ -59,6 +59,12 @@
       var(--brand-black);
   }
 
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   ::selection {
     background: rgba(234, 89, 220, .34);
     color: #ffffff;
@@ -184,12 +190,20 @@
     @apply rounded-crm-xl border border-line-strong bg-elevated/95 shadow-glow backdrop-blur-xl;
   }
 
+  .crm-chart-card {
+    @apply rounded-crm-xl border border-brand-400/10 bg-[linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.025)_42%,rgba(106,13,173,.08))] shadow-[0_22px_80px_rgba(0,0,0,.34),inset_0_1px_0_rgba(255,255,255,.04)] backdrop-blur-xl transition duration-premium ease-premium hover:border-brand-400/[0.18] hover:shadow-[0_24px_90px_rgba(0,0,0,.38),0_0_36px_rgba(106,13,173,.12),inset_0_1px_0_rgba(255,255,255,.05)];
+  }
+
   .crm-button-primary {
     @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-crm bg-gradient-to-r from-brand-600 to-brand-500 px-4 text-sm font-black text-white shadow-[0_0_28px_rgba(234,89,220,.18)] transition duration-premium ease-premium hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-55;
   }
 
   .crm-button-secondary {
     @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-crm border border-line bg-white/[0.045] px-4 text-sm font-bold text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition duration-premium ease-premium hover:border-brand-400/35 hover:bg-brand-500/15 hover:text-white focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-55;
+  }
+
+  .crm-button-danger {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-crm border border-rose-300/25 bg-rose-500/15 px-4 text-sm font-black text-rose-100 shadow-[0_0_24px_rgba(244,63,94,.12)] transition duration-premium ease-premium hover:-translate-y-0.5 hover:border-rose-300/45 hover:bg-rose-500/25 hover:text-white focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-55;
   }
 
   .crm-button-ghost {
@@ -228,7 +242,11 @@
   }
 
   .crm-popover-surface {
-    @apply rounded-crm-xl border border-line-strong bg-ink/95 shadow-popover backdrop-blur-xl;
+    @apply rounded-crm-xl border border-brand-400/15 bg-ink/95 shadow-popover backdrop-blur-xl;
+    background-image:
+      linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.018)),
+      radial-gradient(circle at 18% 0%, rgba(106,13,173,.18), transparent 14rem),
+      radial-gradient(circle at 100% 12%, rgba(234,89,220,.10), transparent 12rem);
   }
 
   .crm-overlay-backdrop {
@@ -240,7 +258,7 @@
   }
 
   .crm-menu-item {
-    @apply rounded-crm px-3 py-2 text-sm font-semibold text-zinc-300 transition duration-premium ease-premium hover:bg-brand-500/15 hover:text-white focus:bg-brand-500/15 focus:text-white focus:outline-none data-[selected=true]:bg-brand-500/15 data-[selected=true]:text-white;
+    @apply rounded-crm px-3 py-2 text-sm font-semibold text-zinc-300 transition duration-premium ease-premium hover:border-brand-400/20 hover:bg-brand-500/15 hover:text-white focus:bg-brand-500/15 focus:text-white focus:outline-none data-[selected=true]:bg-brand-500/15 data-[selected=true]:text-white;
   }
 
   .crm-menu-item-active {
@@ -248,7 +266,7 @@
   }
 
   .crm-control {
-    @apply min-h-11 rounded-crm border border-line bg-white/[0.045] px-3 text-sm text-white outline-none transition duration-premium ease-premium placeholder:text-zinc-500 hover:border-brand-400/30 hover:bg-white/[0.06] focus:border-brand-400 focus:shadow-focus;
+    @apply min-h-11 min-w-0 rounded-crm border border-line bg-white/[0.045] px-3 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,.035)] outline-none transition duration-premium ease-premium placeholder:text-zinc-500 hover:border-brand-400/30 hover:bg-white/[0.06] focus:border-brand-400 focus:shadow-focus;
   }
 
   .crm-select-trigger {
@@ -257,5 +275,13 @@
 
   .crm-active-ring {
     @apply ring-1 ring-brand-400/35 shadow-[0_0_30px_rgba(234,89,220,.16)];
+  }
+
+  .crm-icon-button {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-crm border border-line bg-white/[0.045] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition duration-premium ease-premium hover:border-brand-400/35 hover:bg-brand-500/15 hover:text-white focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-55;
+  }
+
+  .crm-filter-panel {
+    @apply rounded-crm-xl border border-brand-400/10 bg-ink/90 shadow-popover backdrop-blur-xl;
   }
 }

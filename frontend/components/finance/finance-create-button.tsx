@@ -5,6 +5,7 @@ import { FinanceDialog } from "@/components/finance/finance-dialog";
 import { FinanceFormFields } from "@/components/finance/finance-form-fields";
 import { FinanceSubmitButton } from "@/components/finance/finance-submit-button";
 import { ModalFooter } from "@/components/ui/modal-dialog";
+import { SafeActionForm } from "@/components/ui/safe-action-form";
 import { createFinanceEntryAction } from "@/lib/finance/actions";
 import type { FinanceSelectOption } from "@/lib/types/finance";
 
@@ -30,7 +31,7 @@ export function FinanceCreateButton({
       </button>
       {isOpen ? (
         <FinanceDialog title="Cadastrar lancamento" eyebrow="Controle financeiro" onClose={() => setIsOpen(false)}>
-          <form action={createFinanceEntryAction} className="mt-5 space-y-5">
+          <SafeActionForm action={createFinanceEntryAction} onSuccess={() => setIsOpen(false)} className="mt-5 space-y-5">
             <FinanceFormFields
               clientOptions={clientOptions}
               contractOptions={contractOptions}
@@ -38,7 +39,7 @@ export function FinanceCreateButton({
               serviceOptions={serviceOptions}
             />
             <FinanceDialogFooter onClose={() => setIsOpen(false)} submitLabel="Salvar lancamento" />
-          </form>
+          </SafeActionForm>
         </FinanceDialog>
       ) : null}
     </>

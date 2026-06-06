@@ -1,7 +1,10 @@
-export type GoalType = "FATURAMENTO" | "VENDAS" | "CLIENTES" | "REUNIOES" | "ENTREGAS" | "LUCRO";
+export type GoalType = "FATURAMENTO" | "VENDAS" | "CLIENTES" | "REUNIOES" | "ENTREGAS" | "LUCRO" | "LEADS" | "TAREFAS" | "PROJETOS" | "COMISSAO";
+
+export type GoalStatus = "EM_ANDAMENTO" | "ATINGIDA" | "ATRASADA" | "CANCELADA";
 
 export type Goal = {
   id: string;
+  name: string | null;
   type: GoalType;
   target: number | string;
   actual: number | string;
@@ -9,6 +12,8 @@ export type Goal = {
   date: string;
   periodStart: string | null;
   periodEnd: string | null;
+  responsible: string | null;
+  status: GoalStatus;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +26,7 @@ export type GoalPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type GoalQuery = {

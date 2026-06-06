@@ -38,12 +38,19 @@ public class CrmEventController {
     @PreAuthorize("@crmPermission.canRead(authentication, 'AGENDA')")
     Page<CrmEventResponse> search(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String responsible,
             @RequestParam(required = false) UUID clientId,
+            @RequestParam(required = false) UUID leadId,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID contractId,
+            @RequestParam(required = false) UUID taskId,
+            @RequestParam(required = false) String priority,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @PageableDefault(size = 50, sort = "date", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return service.search(status, clientId, from, to, pageable);
+        return service.search(status, type, responsible, clientId, leadId, projectId, contractId, taskId, priority, from, to, pageable);
     }
 
     @GetMapping("/{id}")

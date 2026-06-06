@@ -4,11 +4,10 @@ import br.com.vertxmidia.crm.modules.client.domain.ClientPriority;
 import br.com.vertxmidia.crm.modules.client.domain.ClientStatus;
 import br.com.vertxmidia.crm.modules.client.domain.DocumentType;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -16,14 +15,18 @@ import java.util.UUID;
 public record ClientRequest(
         @NotBlank @Size(max = 160) String name,
         @NotBlank @Size(max = 40) String phase,
-        @NotNull @DecimalMin("0.00") BigDecimal value,
-        @NotNull @Min(1) Integer months,
+        BigDecimal value,
+        Integer months,
         @NotBlank @Size(max = 160) String contact,
         @Email @Size(max = 180) String email,
         @Size(max = 40) String phone,
         @Size(max = 32) String document,
+        @Pattern(regexp = "^(FISICA|JURIDICA)$", message = "Tipo de cliente invalido")
+        String clientType,
         DocumentType documentType,
         @Size(max = 100) String segment,
+        @Size(max = 80) String origin,
+        @Size(max = 160) String responsibleName,
         ClientStatus status,
         ClientPriority priority,
         @Size(max = 1000) String tags,

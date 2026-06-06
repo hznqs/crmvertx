@@ -29,6 +29,7 @@ export function useMask({ type, defaultValue, required }: UseMaskOptions) {
     const next = formatByMask(type, rawValue);
     setDisplayValue(next.displayValue);
     setSubmitValue(next.submitValue);
+    return next;
   }, [type]);
 
   return {

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendErrorMessage } from "@/lib/api/backend";
 import { toDeliverySearchParams } from "@/lib/deliveries/query";
 import type { DeliveryPage, DeliveryQuery, DeliverySummary } from "@/lib/types/deliveries";
 
@@ -32,7 +33,7 @@ export async function fetchDeliveries(query: DeliveryQuery): Promise<DeliveryPag
       cache: "no-store"
     });
   } catch {
-    return { ...emptyDeliveryPage, sourceUnavailable: true };
+    return { ...emptyDeliveryPage, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -40,7 +41,7 @@ export async function fetchDeliveries(query: DeliveryQuery): Promise<DeliveryPag
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar entregas");
+    return { ...emptyDeliveryPage, loadError: await backendErrorMessage(response, "Nao foi possivel carregar entregas") };
   }
 
   return response.json();
@@ -62,7 +63,7 @@ export async function fetchDeliverySummary(query: Pick<DeliveryQuery, "clientId"
       cache: "no-store"
     });
   } catch {
-    return { ...emptyDeliverySummary, sourceUnavailable: true };
+    return { ...emptyDeliverySummary, sourceUnavailable: true, loadError: "Backend indisponivel em http://localhost:8080." };
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -70,7 +71,7 @@ export async function fetchDeliverySummary(query: Pick<DeliveryQuery, "clientId"
   }
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel carregar resumo de entregas");
+    return { ...emptyDeliverySummary, loadError: await backendErrorMessage(response, "Nao foi possivel carregar resumo de entregas") };
   }
 
   return response.json();

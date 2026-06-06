@@ -12,13 +12,19 @@ export type Task = {
   id: string;
   projectId: string;
   deliveryId: string | null;
+  clientId: string | null;
+  contractId: string | null;
+  serviceId: string | null;
   responsibleUserId: string | null;
   title: string;
   description: string | null;
+  checklist: string | null;
+  comments: string | null;
   priority: TaskPriority;
   dueDate: string;
   status: TaskStatus;
   overdue: boolean;
+  completedAt: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +37,7 @@ export type TaskPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type TaskQuery = {

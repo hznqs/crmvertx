@@ -1,4 +1,5 @@
 import type { CalendarEvent } from "@/lib/types/calendar";
+import type { CalendarViewMode } from "@/lib/types/calendar";
 
 export type CalendarDay = {
   date: Date;
@@ -59,6 +60,59 @@ export function buildCalendarDays(monthKey: string, events: CalendarEvent[]) {
   });
 }
 
+export function buildCalendarRange(view: CalendarViewMode, dateKey: string, monthKey: string) {
+  if (view === "day") {
+    const date = parseDateKey(dateKey);
+    return { from: toDateKey(date), to: toDateKey(date) };
+  }
+
+  if (view === "week") {
+    const weekStart = startOfWeek(parseDateKey(dateKey));
+    const weekEnd = addDays(weekStart, 6);
+    return { from: toDateKey(weekStart), to: toDateKey(weekEnd) };
+  }
+
+  return buildMonthRange(monthKey);
+}
+
+export function buildCalendarDaysForRange(from: string, to: string, events: CalendarEvent[], monthKey: string) {
+  const start = parseDateKey(from);
+  const end = parseDateKey(to);
+  const totalDays = Math.max(Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1, 1);
+  const todayKey = toDateKey(new Date());
+  const eventsByDate = groupEventsByDate(events);
+  const currentMonth = parseMonthKey(monthKey).getMonth();
+
+  return Array.from({ length: totalDays }, (_, index) => {
+    const date = addDays(start, index);
+    const dateKey = toDateKey(date);
+
+    return {
+      date,
+      dateKey,
+      dayNumber: date.getDate(),
+      isCurrentMonth: date.getMonth() === currentMonth,
+      isToday: dateKey === todayKey,
+      events: eventsByDate.get(dateKey) ?? []
+    };
+  });
+}
+
+export function getCalendarRangeLabel(view: CalendarViewMode, from: string, to: string, monthKey: string) {
+  if (view === "month") return getMonthLabel(monthKey);
+
+  const formatter = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: view === "day" ? "numeric" : undefined
+  });
+  const start = formatter.format(parseDateKey(from));
+
+  if (view === "day") return start;
+
+  return `${start} - ${formatter.format(parseDateKey(to))}`;
+}
+
 export function getMonthLabel(monthKey: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     month: "long",
@@ -97,4 +151,10 @@ function startOfWeek(date: Date) {
 
 function addDays(date: Date, days: number) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function parseDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
 }

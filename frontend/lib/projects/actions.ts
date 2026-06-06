@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { ProjectStatus } from "@/lib/types/projects";
+import { safeServerAction, type ServerActionResult } from "@/lib/actions/result";
+import { numberFromFormValue } from "@/lib/forms/number";
+import type { ProjectPriority, ProjectStatus } from "@/lib/types/projects";
 
 type ProjectPayload = {
   clientId: string;
@@ -13,6 +15,8 @@ type ProjectPayload = {
   status: ProjectStatus;
   responsibleUserId: string | null;
   teamMemberIds: string;
+  startDate: string | null;
+  priority: ProjectPriority;
   progress: number;
   slaDueDate: string | null;
   budget: number;
@@ -21,36 +25,44 @@ type ProjectPayload = {
   active: boolean;
 };
 
-export async function createProjectAction(formData: FormData) {
-  await mutateProjectBackend("/api/projects", "POST", projectPayloadFromForm(formData));
-  revalidatePath("/projects");
+export async function createProjectAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    await mutateProjectBackend("/api/projects", "POST", projectPayloadFromForm(formData));
+    revalidatePath("/projects");
+  }, "Nao foi possivel salvar o projeto");
 }
 
-export async function updateProjectAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateProjectBackend(
-    `/api/projects/${encodeURIComponent(id)}`,
-    "PUT",
-    projectPayloadFromForm(formData)
-  );
-  revalidatePath("/projects");
+export async function updateProjectAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateProjectBackend(
+      `/api/projects/${encodeURIComponent(id)}`,
+      "PUT",
+      projectPayloadFromForm(formData)
+    );
+    revalidatePath("/projects");
+  }, "Nao foi possivel salvar o projeto");
 }
 
-export async function updateProjectStatusAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  const status = requiredString(formData.get("status")) as ProjectStatus;
-  const progress = nullableNumber(formData.get("progress"));
-  await mutateProjectBackend(`/api/projects/${encodeURIComponent(id)}/status`, "PATCH", {
-    status,
-    progress
-  });
-  revalidatePath("/projects");
+export async function updateProjectStatusAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    const status = requiredString(formData.get("status")) as ProjectStatus;
+    const progress = nullableNumber(formData.get("progress"));
+    await mutateProjectBackend(`/api/projects/${encodeURIComponent(id)}/status`, "PATCH", {
+      status,
+      progress
+    });
+    revalidatePath("/projects");
+  }, "Nao foi possivel atualizar o status do projeto");
 }
 
-export async function deleteProjectAction(formData: FormData) {
-  const id = requiredString(formData.get("id"));
-  await mutateProjectBackend(`/api/projects/${encodeURIComponent(id)}`, "DELETE");
-  revalidatePath("/projects");
+export async function deleteProjectAction(formData: FormData): Promise<ServerActionResult> {
+  return safeServerAction(async () => {
+    const id = requiredString(formData.get("id"));
+    await mutateProjectBackend(`/api/projects/${encodeURIComponent(id)}`, "DELETE");
+    revalidatePath("/projects");
+  }, "Nao foi possivel excluir o projeto");
 }
 
 function projectPayloadFromForm(formData: FormData): ProjectPayload {
@@ -63,6 +75,8 @@ function projectPayloadFromForm(formData: FormData): ProjectPayload {
     status: requiredString(formData.get("status")) as ProjectStatus,
     responsibleUserId: nullableString(formData.get("responsibleUserId")),
     teamMemberIds: stringFromForm(formData.get("teamMemberIds")),
+    startDate: nullableString(formData.get("startDate")),
+    priority: requiredString(formData.get("priority")) as ProjectPriority,
     progress: clamp(numberFromForm(formData.get("progress")), 0, 100),
     slaDueDate: nullableString(formData.get("slaDueDate")),
     budget: numberFromForm(formData.get("budget")),
@@ -119,7 +133,7 @@ function nullableNumber(value: FormDataEntryValue | null) {
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {
-  return Number(String(value ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
+  return numberFromFormValue(value);
 }
 
 function clamp(value: number, min: number, max: number) {

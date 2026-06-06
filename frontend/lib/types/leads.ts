@@ -34,11 +34,16 @@ export type Lead = {
   temperature: LeadTemperature;
   potentialValue: number;
   responsibleUserId: string | null;
+  responsibleName: string | null;
+  serviceInterest: string | null;
+  nextAction: string | null;
+  nextActionDate: string | null;
   notes: string | null;
   status: LeadStatus;
   commercialStage: CommercialStage;
   lostReason: string | null;
   convertedAt: string | null;
+  convertedClientId: string | null;
   active: boolean;
   createdBy: string | null;
   updatedBy: string | null;
@@ -53,6 +58,7 @@ export type LeadPage = {
   totalPages: number;
   totalElements: number;
   sourceUnavailable?: boolean;
+  loadError?: string;
 };
 
 export type LeadQuery = {
@@ -63,6 +69,7 @@ export type LeadQuery = {
   temperature: string;
   origin: string;
   status: string;
+  active: string;
 };
 
 export type LeadSearchParams = Partial<Record<keyof LeadQuery, string>>;

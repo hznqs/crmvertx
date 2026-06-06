@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { DeliveryCreateButton } from "@/components/deliveries/delivery-create-button";
 import { DeliveryFilters } from "@/components/deliveries/delivery-filters";
+import { DeliveryKanbanAnalytics } from "@/components/deliveries/delivery-kanban-analytics";
+import { DeliveryKanbanBoard } from "@/components/deliveries/delivery-kanban-board";
 import { DeliveryMetrics } from "@/components/deliveries/delivery-metrics";
 import { DeliveryTable } from "@/components/deliveries/delivery-table";
 import { fetchClients } from "@/lib/api/clients";
@@ -42,6 +43,7 @@ export default async function DeliveriesPage({ searchParams }: DeliveriesPagePro
     label: contract.plan
   }));
   const serviceOptions = servicePage.content.map(toOption);
+  const loadError = deliveryPage.loadError ?? summary.loadError ?? clientPage.loadError ?? projectPage.loadError ?? contractPage.loadError ?? servicePage.loadError;
 
   return (
     <main className="space-y-6">
@@ -59,9 +61,6 @@ export default async function DeliveriesPage({ searchParams }: DeliveriesPagePro
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/deliveries/kanban" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-brand-500/30 bg-brand-600 px-5 text-sm font-bold text-white shadow-[0_0_28px_rgba(234,89,220,.18)] transition hover:bg-brand-500">
-            Abrir Kanban
-          </Link>
           <PermissionGate module="DELIVERIES" level="write" role={user?.role ?? null}>
             <DeliveryCreateButton
               clientOptions={clientOptions}
@@ -75,10 +74,9 @@ export default async function DeliveriesPage({ searchParams }: DeliveriesPagePro
 
       <DeliveryMetrics summary={summary} />
 
-      {deliveryPage.sourceUnavailable || summary.sourceUnavailable ? (
+      {loadError ? (
         <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-          Backend indisponivel em http://localhost:8080. Inicie o Spring Boot
-          para carregar entregas e resumo operacional reais.
+          {loadError}
         </div>
       ) : null}
 
@@ -92,6 +90,19 @@ export default async function DeliveriesPage({ searchParams }: DeliveriesPagePro
           serviceOptions={serviceOptions}
           actionPermissions={actionPermissions}
         />
+      </section>
+
+      <section className="space-y-4 rounded-xl bg-panel/95 p-4 shadow-panel md:p-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-400">
+            Visual operacional
+          </p>
+          <h2 className="mt-1 text-xl font-black text-white">
+            Kanban de entregas
+          </h2>
+        </div>
+        <DeliveryKanbanAnalytics deliveries={deliveryPage.content} />
+        <DeliveryKanbanBoard deliveries={deliveryPage.content} clientOptions={clientOptions} />
       </section>
     </main>
   );

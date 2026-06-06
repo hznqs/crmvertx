@@ -1,13 +1,17 @@
 import { MetricCard } from "@/components/app/metric-card";
 import { EmptyState, PageHeader, Section } from "@/components/app/enterprise-page";
+import { AdminCleanupPanel } from "@/components/settings/admin-cleanup-panel";
 import { fetchCrmSettings, fetchOrganization } from "@/lib/api/settings";
+import { getSessionUser } from "@/lib/auth/session";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default async function SettingsPage() {
-  const [settings, organization] = await Promise.all([
+  const [settings, organization, user] = await Promise.all([
     fetchCrmSettings(),
-    fetchOrganization()
+    fetchOrganization(),
+    getSessionUser()
   ]);
+  const canCleanupData = user?.role === "ADMIN";
 
   return (
     <main className="space-y-6">
@@ -46,6 +50,8 @@ export default async function SettingsPage() {
           <Info label="Comissao padrao" value={`${Number(settings?.defaultCommissionRate ?? 0).toFixed(1)}%`} />
         </dl>
       </Section>
+
+      {canCleanupData ? <AdminCleanupPanel /> : null}
     </main>
   );
 }

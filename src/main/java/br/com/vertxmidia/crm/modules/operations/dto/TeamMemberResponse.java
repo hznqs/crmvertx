@@ -3,6 +3,7 @@ package br.com.vertxmidia.crm.modules.operations.dto;
 import br.com.vertxmidia.crm.modules.operations.domain.TeamMember;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record TeamMemberResponse(
@@ -10,6 +11,8 @@ public record TeamMemberResponse(
         UUID userId,
         String name,
         String role,
+        String functionName,
+        LocalDate joinedAt,
         String email,
         String phone,
         Integer tasks,
@@ -29,6 +32,8 @@ public record TeamMemberResponse(
                 member.getUserId(),
                 member.getName(),
                 member.getRole(),
+                member.getFunctionName(),
+                member.getJoinedAt(),
                 member.getEmail(),
                 member.getPhone(),
                 member.getTasks(),

@@ -1,11 +1,10 @@
 package br.com.vertxmidia.crm.modules.operations.application;
 
 import br.com.vertxmidia.crm.modules.audit.application.AuditService;
-import br.com.vertxmidia.crm.modules.client.domain.ClientPhase;
-import br.com.vertxmidia.crm.modules.client.infrastructure.ClientRepository;
 import br.com.vertxmidia.crm.modules.operations.domain.CommissionSale;
 import br.com.vertxmidia.crm.modules.operations.domain.Contract;
 import br.com.vertxmidia.crm.modules.operations.domain.FinanceEntry;
+import br.com.vertxmidia.crm.modules.operations.infrastructure.ContractRepository;
 import br.com.vertxmidia.crm.modules.operations.infrastructure.FinanceEntryRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,11 +25,11 @@ class FinanceEntryServiceTest {
     @Test
     void summaryCalculatesFinancialKpisFromRepositoryAggregates() {
         FinanceEntryRepository entries = mock(FinanceEntryRepository.class);
-        ClientRepository clients = mock(ClientRepository.class);
+        ContractRepository contracts = mock(ContractRepository.class);
         LocalDate from = LocalDate.of(2026, 5, 1);
         LocalDate to = LocalDate.of(2026, 5, 31);
 
-        when(clients.sumContractValueByPhase(ClientPhase.FECHADO)).thenReturn(new BigDecimal("5000.00"));
+        when(contracts.sumMonthlyValueByStatusAndActiveTrue("ativo")).thenReturn(new BigDecimal("5000.00"));
         when(entries.sumRecurringByTypeAndPeriod("receita", from, to)).thenReturn(new BigDecimal("1200.00"));
         when(entries.sumByTypeAndPeriod("receita", from, to)).thenReturn(new BigDecimal("3000.00"));
         when(entries.sumByTypeAndPeriod("despesa", from, to)).thenReturn(new BigDecimal("1000.00"));
@@ -39,7 +38,7 @@ class FinanceEntryServiceTest {
         when(entries.sumByStatusAndPeriod("vencido", from, to)).thenReturn(new BigDecimal("250.00"));
         when(entries.countAutoBillingByPeriod(from, to)).thenReturn(2L);
 
-        FinanceEntryService service = new FinanceEntryService(entries, clients, mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, contracts, mock(AuditService.class));
 
         var summary = service.summary(from, to);
 
@@ -67,7 +66,7 @@ class FinanceEntryServiceTest {
             return entry;
         });
 
-        FinanceEntryService service = new FinanceEntryService(entries, mock(ClientRepository.class), mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, mock(ContractRepository.class), mock(AuditService.class));
 
         var response = service.syncContractRevenue(contract).orElseThrow();
 
@@ -92,7 +91,7 @@ class FinanceEntryServiceTest {
         when(entries.findFirstByContractIdAndTypeAndAutoBillingTrueAndActiveTrue(contract.getId(), "receita")).thenReturn(Optional.of(current));
         when(entries.save(any(FinanceEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        FinanceEntryService service = new FinanceEntryService(entries, mock(ClientRepository.class), mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, mock(ContractRepository.class), mock(AuditService.class));
 
         var response = service.syncContractRevenue(contract).orElseThrow();
 
@@ -112,7 +111,7 @@ class FinanceEntryServiceTest {
         when(entries.findFirstByContractIdAndTypeAndAutoBillingTrueAndActiveTrue(contract.getId(), "receita")).thenReturn(Optional.of(current));
         when(entries.save(any(FinanceEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        FinanceEntryService service = new FinanceEntryService(entries, mock(ClientRepository.class), mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, mock(ContractRepository.class), mock(AuditService.class));
 
         var response = service.syncContractRevenue(contract);
 
@@ -137,7 +136,7 @@ class FinanceEntryServiceTest {
             return entry;
         });
 
-        FinanceEntryService service = new FinanceEntryService(entries, mock(ClientRepository.class), mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, mock(ContractRepository.class), mock(AuditService.class));
 
         var response = service.syncCommissionExpense(commission).orElseThrow();
 
@@ -159,7 +158,7 @@ class FinanceEntryServiceTest {
 
         when(entries.findFirstByContractIdAndTypeAndAutoBillingTrueAndActiveTrue(commission.getContractId(), "despesa")).thenReturn(Optional.of(current));
 
-        FinanceEntryService service = new FinanceEntryService(entries, mock(ClientRepository.class), mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, mock(ContractRepository.class), mock(AuditService.class));
 
         var response = service.syncCommissionExpense(commission).orElseThrow();
 
@@ -179,7 +178,7 @@ class FinanceEntryServiceTest {
         when(entries.findById(commission.getFinanceEntryId())).thenReturn(Optional.of(current));
         when(entries.save(any(FinanceEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        FinanceEntryService service = new FinanceEntryService(entries, mock(ClientRepository.class), mock(AuditService.class));
+        FinanceEntryService service = new FinanceEntryService(entries, mock(ContractRepository.class), mock(AuditService.class));
 
         var response = service.syncCommissionExpense(commission);
 
